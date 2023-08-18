@@ -1,2 +1,2 @@
 # Aurorium
-Revive101 backend-server for saving relevant data
+Revive101 File & -Backendserver for files associated with the Wizard101 client
