@@ -36,7 +36,7 @@ struct Opt {
 fn opts() -> OptionParser<Opt> {
     let verbose = short('v')
         .long("verbose")
-        .help("Activate verbosity [INFO]")
+        .help("Activate verbosity (Default: warn)")
         .switch();
 
     let revision = short('r')
