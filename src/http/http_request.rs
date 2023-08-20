@@ -212,8 +212,7 @@ impl HttpRequest {
 
             async move {
                 if !path.exists() {
-                    match request_file(format!("{}/{}", &url_cloned, &wad.filename).as_str()).await
-                    {
+                    match request_file(format!("{}/{}", &url_cloned, &wad.filename)).await {
                         Ok(res) => {
                             let bytes = res
                                 .bytes()
@@ -261,8 +260,7 @@ impl HttpRequest {
 
             async move {
                 if !path.exists() {
-                    match request_file(format!("{}/{}", &url_cloned, &util.filename).as_str()).await
-                    {
+                    match request_file(format!("{}/{}", &url_cloned, &util.filename)).await {
                         Ok(res) => {
                             let bytes = res
                                 .bytes()
@@ -296,9 +294,11 @@ impl HttpRequest {
     }
 }
 
-async fn request_file(url: &str) -> Result<reqwest::Response, reqwest::Error> {
+async fn request_file<T: AsRef<str>>(url: T) -> Result<reqwest::Response, reqwest::Error> {
     let client = reqwest::Client::new();
-    let res = client.get(url).header("User-Agent", "KingsIsle Patcher");
+    let res = client
+        .get(url.as_ref())
+        .header("User-Agent", "KingsIsle Patcher");
     Ok(res.send().await?)
 }
 
