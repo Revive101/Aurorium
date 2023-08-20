@@ -289,7 +289,7 @@ impl HttpRequest {
             "{} {}fetched {} util files",
             style("[6/6]").bold().dim(),
             BOX,
-            &self.files.wad_list.len(),
+            &self.files.util_list.len(),
         );
     }
 }
