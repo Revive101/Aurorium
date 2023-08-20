@@ -10,6 +10,8 @@ use axum::headers::UserAgent;
 use chrono::Local;
 use std::net::SocketAddr;
 
+use crate::REVISIONS;
+
 pub fn log_access(addr: SocketAddr, header: UserAgent, route: String) -> () {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
     let eu_time = Local::now().format("%T (%d.%m.%Y)");
@@ -22,15 +24,18 @@ pub fn log_access(addr: SocketAddr, header: UserAgent, route: String) -> () {
 }
 
 // TODO: REFACTOR to only call this once & save it in memory instead of calling it every request
-pub async fn explore_dir() -> std::io::Result<Vec<String>> {
+pub async fn explore_revisions() -> std::io::Result<()> {
     let mut dir = tokio::fs::read_dir(std::env::current_dir().unwrap().join("files")).await?;
 
-    let mut revisions: Vec<String> = Vec::new();
+    let mut revisions_vec: Vec<String> = Vec::new();
     while let Some(entry) = &dir.next_entry().await? {
         if entry.file_type().await?.is_dir() {
-            revisions.push(entry.file_name().to_string_lossy().to_string())
+            revisions_vec.push(entry.file_name().to_string_lossy().to_string())
         }
     }
 
-    Ok(revisions)
+    let mut revisions = REVISIONS.lock().unwrap();
+    *revisions = Some(revisions_vec);
+
+    Ok(())
 }
