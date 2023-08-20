@@ -15,14 +15,19 @@ use axum::{
     Router, TypedHeader,
 };
 use bpaf::{construct, short, OptionParser, Parser};
+use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use serde_json::json;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Mutex};
 use tokio_util::io::ReaderStream;
-use util::{explore_dir, log_access};
+use util::{explore_revisions, log_access};
 
 mod http;
 mod util;
+
+lazy_static! {
+    pub static ref REVISIONS: Mutex<Option<Vec<String>>> = Mutex::new(None);
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -90,6 +95,9 @@ async fn main() {
         req.propogate_filelist().await;
     }
 
+    // Add the revisions to `REVISIONS`
+    explore_revisions().await.unwrap();
+
     // Initialize all routes
     let app = Router::new()
         .route("/patcher/revisions", get(get_revisions))
@@ -114,10 +122,10 @@ async fn get_revisions(
 ) -> impl IntoResponse {
     log_access(addr, user_agent, "/patcher/revisions".to_string());
 
-    let folders = match explore_dir().await {
-        Ok(folders) => folders,
+    let folders = match REVISIONS.lock() {
+        Ok(r) => r.clone().unwrap_or(vec![]),
         Err(why) => {
-            log::error!("There was an error exploring the directory! {why}");
+            log::error!("Could not lock REVISIONS, {why}");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "500 - Internal Error!".to_string(),
