@@ -74,6 +74,7 @@ dependencies = [
  "env_logger",
  "futures",
  "indicatif",
+ "lazy_static",
  "log",
  "quick-xml 0.30.0",
  "quickxml_to_serde",
