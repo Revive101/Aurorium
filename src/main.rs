@@ -18,7 +18,7 @@ use bpaf::{construct, short, OptionParser, Parser};
 use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use serde_json::json;
-use std::{net::SocketAddr, sync::Mutex};
+use std::{net::SocketAddr, process, sync::Mutex};
 use tokio_util::io::ReaderStream;
 use util::{explore_revisions, log_access};
 
@@ -26,7 +26,7 @@ mod http;
 mod util;
 
 lazy_static! {
-    pub static ref REVISIONS: Mutex<Option<Vec<String>>> = Mutex::new(None);
+    pub static ref REVISIONS: Mutex<Vec<String>> = Mutex::new(vec![]);
 }
 
 #[allow(dead_code)]
@@ -34,7 +34,7 @@ lazy_static! {
 struct Opt {
     verbose: bool,
     revision: Option<String>,
-    override_ip: SocketAddr,
+    ip: SocketAddr,
     concurrent_downloads: usize,
 }
 
@@ -50,8 +50,8 @@ fn opts() -> OptionParser<Opt> {
         .argument::<String>("String")
         .optional();
 
-    let override_ip = short('o')
-        .long("override_ip")
+    let ip = short('i')
+        .long("ip")
         .help("Override the default endpoint IP (Default: 0.0.0.0:12369)")
         .argument::<SocketAddr>("SocketAddr")
         .fallback("0.0.0.0:12369".parse().unwrap());
@@ -62,13 +62,12 @@ fn opts() -> OptionParser<Opt> {
         .argument::<usize>("usize")
         .fallback(8);
 
-    construct!(Opt { verbose, revision, override_ip, concurrent_downloads })
+    construct!(Opt { verbose, revision, ip, concurrent_downloads })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
         .descr("By default, only the webserver will get started. If you want to try to fetch from a revision, use the --revision or -r parameter.")
 }
 
-// ! TODO: Replace every .expect() and .unwrap() with custom log error or warning messages
 #[tokio::main]
 async fn main() {
     let opts = opts().run();
@@ -95,8 +94,14 @@ async fn main() {
         req.propogate_filelist().await;
     }
 
-    // Add the revisions to `REVISIONS`
-    explore_revisions().await.unwrap();
+    // If there are no files to host, why have the server running anyways? 🤓☝
+    match explore_revisions().await {
+        Ok(_) => {}
+        Err(_) => {
+            log::error!("There are no revisions for the server to host! (Quitting)");
+            process::exit(0);
+        }
+    }
 
     // Initialize all routes
     let app = Router::new()
@@ -105,9 +110,8 @@ async fn main() {
         .route("/patcher/:revision", get(get_xml_filelist))
         .route("/patcher/:revision/utils/:filename", get(get_util));
 
-    let ip = opts.override_ip;
-    log::info!("Starting HTTP server @ {ip}");
-    match axum::Server::bind(&ip)
+    log::info!("Starting HTTP server @ {}", &opts.ip);
+    match axum::Server::bind(&opts.ip)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
     {
@@ -123,7 +127,7 @@ async fn get_revisions(
     log_access(addr, user_agent, "/patcher/revisions".to_string());
 
     let folders = match REVISIONS.lock() {
-        Ok(r) => r.clone().unwrap_or(vec![]),
+        Ok(r) => r.clone(),
         Err(why) => {
             log::error!("Could not lock REVISIONS, {why}");
             return Err((

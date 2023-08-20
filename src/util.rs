@@ -17,13 +17,12 @@ pub fn log_access(addr: SocketAddr, header: UserAgent, route: String) -> () {
     let eu_time = Local::now().format("%T (%d.%m.%Y)");
 
     if header.to_string().eq(REQUIRED_USER_AGENT) {
-        log::info!("{addr} connected to endpoint {route} @ {eu_time}");
+        log::info!("{addr} connected to {route} @ {eu_time}");
     } else {
-        log::info!("[UNAUTHORIZED] {addr} connected to endpoint {route} @ {eu_time}");
+        log::info!("[UNAUTHORIZED] {addr} connected to {route} @ {eu_time}");
     }
 }
 
-// TODO: REFACTOR to only call this once & save it in memory instead of calling it every request
 pub async fn explore_revisions() -> std::io::Result<()> {
     let mut dir = tokio::fs::read_dir(std::env::current_dir().unwrap().join("files")).await?;
 
@@ -35,7 +34,7 @@ pub async fn explore_revisions() -> std::io::Result<()> {
     }
 
     let mut revisions = REVISIONS.lock().unwrap();
-    *revisions = Some(revisions_vec);
+    *revisions = revisions_vec;
 
     Ok(())
 }
