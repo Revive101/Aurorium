@@ -113,7 +113,6 @@ impl HttpRequest {
                     }
                 }
 
-                //
                 let config = Config::new_with_defaults();
                 let json = quickxml_to_serde::xml_string_to_json(xml_text, &config)
                     .unwrap()
@@ -225,7 +224,7 @@ impl HttpRequest {
                             log::info!("[✔] Fetched {}", wad.filename);
                         }
                         Err(why) => {
-                            log::warn!("[❌] Could not fetch {}, reason: {}", wad.filename, why);
+                            log::warn!("[❌] Could not fetch {}, {}", wad.filename, why);
                         }
                     };
                 } else {
@@ -273,7 +272,7 @@ impl HttpRequest {
                             log::info!("[✔] Fetched {}", util.filename);
                         }
                         Err(why) => {
-                            log::warn!("[❌] Could not fetch {}, reason: {}", util.filename, why);
+                            log::warn!("[❌] Could not fetch {}, {}", util.filename, why);
                         }
                     };
                 } else {
