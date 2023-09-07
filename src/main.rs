@@ -5,24 +5,15 @@
     Unauthorized use, reproduction, or distribution of this code,
     in whole or in part, by any party outside of Revive101 is prohibited.
 */
-use axum::{
-    body::StreamBody,
-    extract::{ConnectInfo, Path},
-    headers::UserAgent,
-    http::header,
-    response::{AppendHeaders, IntoResponse},
-    routing::get,
-    Router, TypedHeader,
-};
+use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
+use axum::{routing::get, Router};
 use bpaf::{construct, short, OptionParser, Parser};
 use lazy_static::lazy_static;
-use reqwest::StatusCode;
-use serde_json::json;
 use std::{net::SocketAddr, process, sync::Mutex};
-use tokio_util::io::ReaderStream;
-use util::{explore_revisions, log_access};
+use util::explore_revisions;
 
 mod http;
+mod routes;
 mod util;
 
 lazy_static! {
@@ -118,121 +109,4 @@ async fn main() {
         Ok(_) => (),
         Err(why) => log::error!("Could not start Axum server! {}", why),
     }
-}
-
-async fn get_revisions(
-    TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
-    log_access(addr, user_agent, "/patcher/revisions".to_string());
-
-    let folders = match REVISIONS.lock() {
-        Ok(r) => r.clone(),
-        Err(why) => {
-            log::error!("Could not lock REVISIONS, {why}");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "500 - Internal Error!".to_string(),
-            )
-                .into_response());
-        }
-    };
-
-    let headers = AppendHeaders([(header::CONTENT_TYPE, "application/json; charset=utf-8")]);
-
-    Ok((headers, json!(folders).to_string()).into_response())
-}
-
-async fn get_wad(
-    Path((revision, filename)): Path<(String, String)>,
-    TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
-    log_access(
-        addr,
-        user_agent,
-        format!("/patcher/{}/wad/{}", revision, filename),
-    );
-
-    let path = format!("files/{revision}/wads/{filename}");
-
-    let file = match tokio::fs::File::open(path).await {
-        Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
-        }
-    };
-
-    let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
-
-    let header_content = format!("attachment; filename=\"{}\"", filename);
-    let headers = AppendHeaders([
-        (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
-        (header::CONTENT_DISPOSITION, &header_content),
-    ]);
-
-    Ok((headers, body).into_response())
-}
-
-async fn get_xml_filelist(
-    Path(revision): Path<String>,
-    TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
-    log_access(addr, user_agent, format!("/patcher/{}", revision));
-
-    let path = format!("files/{revision}/LatestFileList.xml");
-
-    let file = match tokio::fs::File::open(path).await {
-        Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
-        }
-    };
-
-    let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
-
-    let headers = AppendHeaders([
-        (header::CONTENT_TYPE, "text/xml; charset=utf-8"),
-        (
-            header::CONTENT_DISPOSITION,
-            "attachment; filename=\"LatestFileList.xml\"",
-        ),
-    ]);
-
-    Ok((headers, body).into_response())
-}
-
-async fn get_util(
-    Path((revision, filename)): Path<(String, String)>,
-    TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
-    log_access(
-        addr,
-        user_agent,
-        format!("/patcher/{}/utils/{}", revision, filename),
-    );
-
-    let path = format!("files/{revision}/utils/{filename}");
-
-    let file = match tokio::fs::File::open(path).await {
-        Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
-        }
-    };
-
-    let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
-
-    let header_content = format!("attachment; filename=\"{}\"", filename);
-    let headers = AppendHeaders([
-        (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
-        (header::CONTENT_DISPOSITION, &header_content),
-    ]);
-
-    Ok((headers, body).into_response())
 }
