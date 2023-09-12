@@ -12,6 +12,8 @@ use quickxml_to_serde::Config;
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
 
+use crate::error::{self, KiWadError};
+
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
     pub filelist_url: String,
@@ -83,7 +85,10 @@ impl HttpRequest {
                 if !save_path.join("utils").join("LatestFileList.bin").exists() {
                     match write_to_file(
                         &save_path.join("utils").join("LatestFileList.bin"),
-                        &res.bytes().await.unwrap().to_vec(),
+                        &res.bytes()
+                            .await
+                            .map_err(|e| KiWadError::ReqwestError)
+                            .to_vec(),
                     )
                     .await
                     {
