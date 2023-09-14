@@ -51,7 +51,7 @@ pub async fn get_wad(
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -65,7 +65,7 @@ pub async fn get_wad(
     let stream = ReaderStream::new(file);
     let body = StreamBody::new(stream);
 
-    let header_content = format!("attachment; filename=\"{}\"", filename);
+    let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
@@ -87,7 +87,7 @@ pub async fn get_xml_filelist(
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -129,7 +129,7 @@ pub async fn get_util(
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -143,7 +143,7 @@ pub async fn get_util(
     let stream = ReaderStream::new(file);
     let body = StreamBody::new(stream);
 
-    let header_content = format!("attachment; filename=\"{}\"", filename);
+    let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
