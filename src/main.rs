@@ -12,7 +12,6 @@ use lazy_static::lazy_static;
 use std::{net::SocketAddr, process, sync::Mutex};
 use util::explore_revisions;
 
-pub mod error;
 mod http;
 mod routes;
 mod util;
