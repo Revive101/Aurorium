@@ -78,7 +78,6 @@ async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
     if opts.revision.is_some() {
-        //todo: TOKIO NOT NEEDED ANYMORE??????? 🤩😳😲 TESTING BEGINS SOON??????
         let mut req =
             http::http_request::HttpRequest::new(opts.revision.unwrap(), opts.concurrent_downloads)
                 .await;
