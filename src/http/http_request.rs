@@ -78,21 +78,19 @@ impl HttpRequest {
         let bin_url = &format!("{}/LatestFileList.bin", &self.filelist_url);
 
         // LatestFileList.bin TODO: Move this into their own functions!!
-        match request_file(&bin_url).await {
-            Ok(res) => {
-                if !save_path.join("utils").join("LatestFileList.bin").exists() {
-                    match write_to_file(
-                        &save_path.join("utils").join("LatestFileList.bin"),
-                        &res.bytes().await.unwrap().to_vec(),
-                    )
-                    .await
-                    {
-                        Ok(_) => (),
-                        Err(_) => log::error!("Could not save LatestFileList.bin"),
-                    }
+        if let Ok(res) = request_file(&bin_url).await {
+            if !save_path.join("utils").join("LatestFileList.bin").exists() {
+                if let Err(_) = write_to_file(
+                    &save_path.join("utils").join("LatestFileList.bin"),
+                    &res.bytes().await.unwrap().to_vec(),
+                )
+                .await
+                {
+                    log::error!("Could not save LatestFileList.bin");
                 }
             }
-            Err(_) => log::error!("Could not fetch LatestFileList.bin"),
+        } else {
+            log::error!("Could not fetch LatestFileList.bin")
         };
 
         let xml_url = &format!("{}/LatestFileList.xml", &self.filelist_url);
@@ -108,7 +106,7 @@ impl HttpRequest {
                     )
                     .await
                     {
-                        log::error!("Could not save LatestFileList.xml")
+                        log::error!("Could not save LatestFileList.xml");
                     }
                 }
 
@@ -120,7 +118,6 @@ impl HttpRequest {
                 let parsed = serde_json::from_str::<LatestFiles>(json.as_str())
                     .expect("Could not parse JSON");
 
-                // ! TODO: into_par_iter ???? Important! Rayon could speed up this process by 20ms 😳🤩
                 parsed
                     .latest_file_list
                     .iter()
@@ -149,7 +146,7 @@ impl HttpRequest {
                         }
                         // Bro give me some time to rest 😩😞
                         RecordUnion::RecordElementArray(r) => {
-                            for el in r.iter() {
+                            for el in r {
                                 if el.src_file_name.is_some() {
                                     let filename =
                                         el.src_file_name.as_ref().unwrap().value.as_ref().unwrap();

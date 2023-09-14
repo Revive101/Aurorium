@@ -69,7 +69,7 @@ pub async fn get_wad(
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())
@@ -80,7 +80,7 @@ pub async fn get_xml_filelist(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    log_access(addr, &user_agent, &format!("/patcher/{}", revision));
+    log_access(addr, &user_agent, &format!("/patcher/{revision}"));
 
     let path = format!("files/{revision}/LatestFileList.xml");
 
