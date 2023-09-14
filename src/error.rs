@@ -1,12 +1,11 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-#[allow(dead_code)]
-pub enum KiWadError {
+enum KiWadError {
     #[error("Unknown error")]
     Unknown,
-    #[error("Could not request file")]
+    #[error("There was an error while requesting the file")]
     ReqwestError,
-    #[error("Could not write to file")]
+    #[error("There was an error while writing to file")]
     Io(#[from] std::io::Error),
 }
