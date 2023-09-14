@@ -12,7 +12,7 @@ use std::net::SocketAddr;
 
 use crate::REVISIONS;
 
-pub fn log_access(addr: SocketAddr, header: UserAgent, route: String) -> () {
+pub fn log_access(addr: SocketAddr, header: UserAgent, route: String) {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
     let eu_time = Local::now().format("%T (%d.%m.%Y)");
 
