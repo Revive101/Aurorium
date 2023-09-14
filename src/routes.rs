@@ -43,7 +43,7 @@ pub async fn get_wad(
     log_access(
         addr,
         user_agent,
-        format!("/patcher/{}/wad/{}", revision, filename),
+        format!("/patcher/{revision}/wad/{filename}"),
     );
 
     let path = format!("files/{revision}/wads/{filename}");
@@ -107,7 +107,7 @@ pub async fn get_xml_filelist(
             header::CONTENT_DISPOSITION,
             "attachment; filename=\"LatestFileList.xml\"",
         ),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())
@@ -121,7 +121,7 @@ pub async fn get_util(
     log_access(
         addr,
         user_agent,
-        format!("/patcher/{}/utils/{}", revision, filename),
+        format!("/patcher/{revision}/utils/{filename}"),
     );
 
     let path = format!("files/{revision}/utils/{filename}");
@@ -147,7 +147,7 @@ pub async fn get_util(
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())
