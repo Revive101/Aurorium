@@ -86,12 +86,9 @@ async fn main() {
     }
 
     // If there are no files to host, why have the server running anyways? 🤓☝
-    match explore_revisions().await {
-        Ok(_) => {}
-        Err(_) => {
-            log::error!("There are no revisions for the server to host! (Quitting)");
-            process::exit(0);
-        }
+    if (explore_revisions().await).is_err() {
+        log::error!("There are no revisions for the server to host! (Quitting)");
+        process::exit(0);
     }
 
     // Initialize all routes
