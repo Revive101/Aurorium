@@ -29,7 +29,7 @@ pub async fn explore_revisions() -> std::io::Result<()> {
     let mut revisions_vec: Vec<String> = Vec::new();
     while let Some(entry) = &dir.next_entry().await? {
         if entry.file_type().await?.is_dir() {
-            revisions_vec.push(entry.file_name().to_string_lossy().to_string())
+            revisions_vec.push(entry.file_name().to_string_lossy().to_string());
         }
     }
 
