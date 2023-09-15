@@ -22,3 +22,4 @@ futures = "0.3.28"
 console = "0.15.7"
 indicatif = "0.17.6"
 lazy_static = "1.4.0"
+tower = { version = "0.4.13", features = ["limit"] }
