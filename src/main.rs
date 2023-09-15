@@ -33,7 +33,7 @@ fn opts() -> OptionParser<Opt> {
 
     let revision = short('r')
         .long("revision")
-        .help("Fetch from a revision string (Example: V_r740730.Wizard_1_520_0_Live)")
+        .help("Fetch from a revision string (Example: V_r739602.Wizard_1_520_0_Live)")
         .argument::<String>("String")
         .optional();
 
@@ -75,9 +75,8 @@ async fn main() {
         process::exit(0);
     }
 
-
     // Initialize all routes
-    let app = Router::new().layer(tower::limit::ConcurrencyLimitLayer::new(1))
+    let app = Router::new()
         .route("/patcher/revisions", get(get_revisions))
         .route("/patcher/:revision/wads/:filename", get(get_wad))
         .route("/patcher/:revision", get(get_xml_filelist))
