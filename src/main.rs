@@ -1,10 +1,13 @@
 use std::{net::SocketAddr, process, sync::Mutex};
+use std::sync::Arc;
 
 use axum::{Router, routing::get};
+use axum::middleware::AddExtension;
 use bpaf::{construct, OptionParser, Parser, short};
 use lazy_static::lazy_static;
 
 use util::explore_revisions;
+use crate::rate_limit::rate_limiter::RateLimiter;
 
 use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
@@ -34,7 +37,7 @@ fn opts() -> OptionParser<Opt> {
 
     let revision = short('r')
         .long("revision")
-        .help("Fetch from a revision string (Example: V_r739602.Wizard_1_520_0_Live)")
+        .help("Fetch from a revision string (Example V_r740872.Wizard_1_520)")
         .argument::<String>("String")
         .optional();
 
@@ -75,6 +78,8 @@ async fn main() {
         log::error!("There are no revisions for the server to host! (Quitting)");
         process::exit(0);
     }
+
+    let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new()));
 
     // Initialize all routes
     let app = Router::new()
