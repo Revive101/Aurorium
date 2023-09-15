@@ -1,16 +1,9 @@
-/*
-    Copyright (c) 2023 Phill030. All rights reserved.
-    This code is exclusive to Revive101.
+use std::{collections::HashMap, path::PathBuf};
 
-    Unauthorized use, reproduction, or distribution of this code,
-    in whole or in part, by any party outside of Revive101 is prohibited.
-*/
-
-use console::{style, Emoji};
+use console::{Emoji, style};
 use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
-use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -84,7 +77,7 @@ impl HttpRequest {
                     &save_path.join("utils").join("LatestFileList.bin"),
                     &res.bytes().await.unwrap().to_vec(),
                 )
-                .await
+                    .await
                 {
                     log::error!("Could not save LatestFileList.bin");
                 }
@@ -104,7 +97,7 @@ impl HttpRequest {
                         &save_path.join("LatestFileList.xml"),
                         &xml_text.as_bytes().to_vec(),
                     )
-                    .await
+                        .await
                     {
                         log::error!("Could not save LatestFileList.xml");
                     }
@@ -228,9 +221,9 @@ impl HttpRequest {
                 }
             }
         }))
-        .buffer_unordered(self.max_concurrent_downloads)
-        .collect::<Vec<()>>()
-        .await;
+            .buffer_unordered(self.max_concurrent_downloads)
+            .collect::<Vec<()>>()
+            .await;
 
         println!(
             "{} {}fetched {} wad files",
@@ -276,9 +269,9 @@ impl HttpRequest {
                 }
             }
         }))
-        .buffer_unordered(self.max_concurrent_downloads)
-        .collect::<Vec<()>>()
-        .await;
+            .buffer_unordered(self.max_concurrent_downloads)
+            .collect::<Vec<()>>()
+            .await;
 
         println!(
             "{} {}fetched {} util files",

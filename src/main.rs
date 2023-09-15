@@ -1,16 +1,12 @@
-/*
-    Copyright (c) 2023 Phill030. All rights reserved.
-    This code is exclusive to Revive101.
-
-    Unauthorized use, reproduction, or distribution of this code,
-    in whole or in part, by any party outside of Revive101 is prohibited.
-*/
-use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
-use axum::{routing::get, Router};
-use bpaf::{construct, short, OptionParser, Parser};
-use lazy_static::lazy_static;
 use std::{net::SocketAddr, process, sync::Mutex};
+
+use axum::{Router, routing::get};
+use bpaf::{construct, OptionParser, Parser, short};
+use lazy_static::lazy_static;
+
 use util::explore_revisions;
+
+use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
 mod http;
 mod routes;
