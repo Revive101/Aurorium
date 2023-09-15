@@ -11,6 +11,7 @@ use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 mod http;
 mod routes;
 mod util;
+mod rate_limit;
 
 lazy_static! {
     pub static ref REVISIONS: Mutex<Vec<String>> = Mutex::new(vec![]);
