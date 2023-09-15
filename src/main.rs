@@ -59,17 +59,6 @@ fn opts() -> OptionParser<Opt> {
 async fn main() {
     let opts = opts().run();
 
-    // File Logging
-    // let formatted_time = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    //
-    // let target = Box::new(
-    // std::fs::File::create(format!("{formatted_time}_server.log")).expect("Can't create file"),
-    // );
-    // env_logger::Builder::new()
-    //     .target(env_logger::Target::Pipe(target))
-    //     .filter(None, log::LevelFilter::Info)
-    //     .init();
-
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
