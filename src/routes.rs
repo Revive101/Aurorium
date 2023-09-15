@@ -16,7 +16,7 @@ pub async fn get_revisions(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    log_access(addr, user_agent, "/patcher/revisions".to_string());
+    log_access(addr, &user_agent, "/patcher/revisions");
 
     let folders = match REVISIONS.lock() {
         Ok(r) => r.clone(),
@@ -42,8 +42,8 @@ pub async fn get_wad(
 ) -> impl IntoResponse {
     log_access(
         addr,
-        user_agent,
-        format!("/patcher/{}/wad/{}", revision, filename),
+        &user_agent,
+        &format!("/patcher/{revision}/wad/{filename}"),
     );
 
     let path = format!("files/{revision}/wads/{filename}");
@@ -51,7 +51,7 @@ pub async fn get_wad(
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -65,11 +65,11 @@ pub async fn get_wad(
     let stream = ReaderStream::new(file);
     let body = StreamBody::new(stream);
 
-    let header_content = format!("attachment; filename=\"{}\"", filename);
+    let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())
@@ -80,14 +80,14 @@ pub async fn get_xml_filelist(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    log_access(addr, user_agent, format!("/patcher/{}", revision));
+    log_access(addr, &user_agent, &format!("/patcher/{revision}"));
 
     let path = format!("files/{revision}/LatestFileList.xml");
 
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -107,7 +107,7 @@ pub async fn get_xml_filelist(
             header::CONTENT_DISPOSITION,
             "attachment; filename=\"LatestFileList.xml\"",
         ),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())
@@ -120,8 +120,8 @@ pub async fn get_util(
 ) -> impl IntoResponse {
     log_access(
         addr,
-        user_agent,
-        format!("/patcher/{}/utils/{}", revision, filename),
+        &user_agent,
+        &format!("/patcher/{revision}/utils/{filename}"),
     );
 
     let path = format!("files/{revision}/utils/{filename}");
@@ -129,7 +129,7 @@ pub async fn get_util(
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", err)).into_response())
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
         }
     };
 
@@ -143,11 +143,11 @@ pub async fn get_util(
     let stream = ReaderStream::new(file);
     let body = StreamBody::new(stream);
 
-    let header_content = format!("attachment; filename=\"{}\"", filename);
+    let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
         (header::CONTENT_DISPOSITION, &header_content),
-        (header::CONTENT_LENGTH, &file_length.as_str()),
+        (header::CONTENT_LENGTH, file_length.as_str()),
     ]);
 
     Ok((headers, body).into_response())

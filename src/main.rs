@@ -1,16 +1,12 @@
-/*
-    Copyright (c) 2023 Phill030. All rights reserved.
-    This code is exclusive to Revive101.
-
-    Unauthorized use, reproduction, or distribution of this code,
-    in whole or in part, by any party outside of Revive101 is prohibited.
-*/
-use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
-use axum::{routing::get, Router};
-use bpaf::{construct, short, OptionParser, Parser};
-use lazy_static::lazy_static;
 use std::{net::SocketAddr, process, sync::Mutex};
+
+use axum::{Router, routing::get};
+use bpaf::{construct, OptionParser, Parser, short};
+use lazy_static::lazy_static;
+
 use util::explore_revisions;
+
+use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
 mod http;
 mod routes;
@@ -78,7 +74,6 @@ async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
     if opts.revision.is_some() {
-        //todo: TOKIO NOT NEEDED ANYMORE??????? 🤩😳😲 TESTING BEGINS SOON??????
         let mut req =
             http::http_request::HttpRequest::new(opts.revision.unwrap(), opts.concurrent_downloads)
                 .await;
@@ -86,12 +81,9 @@ async fn main() {
     }
 
     // If there are no files to host, why have the server running anyways? 🤓☝
-    match explore_revisions().await {
-        Ok(_) => {}
-        Err(_) => {
-            log::error!("There are no revisions for the server to host! (Quitting)");
-            process::exit(0);
-        }
+    if (explore_revisions().await).is_err() {
+        log::error!("There are no revisions for the server to host! (Quitting)");
+        process::exit(0);
     }
 
     // Initialize all routes

@@ -1,16 +1,9 @@
-/*
-    Copyright (c) 2023 Phill030. All rights reserved.
-    This code is exclusive to Revive101.
+use std::{collections::HashMap, path::PathBuf};
 
-    Unauthorized use, reproduction, or distribution of this code,
-    in whole or in part, by any party outside of Revive101 is prohibited.
-*/
-
-use console::{style, Emoji};
+use console::{Emoji, style};
 use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
-use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -74,42 +67,39 @@ impl HttpRequest {
             TRUCK
         );
 
-        let mut save_path = PathBuf::from("files").join(&self.files.revision);
+        let save_path = PathBuf::from("files").join(&self.files.revision);
         let bin_url = &format!("{}/LatestFileList.bin", &self.filelist_url);
 
         // LatestFileList.bin TODO: Move this into their own functions!!
-        match request_file(&bin_url).await {
-            Ok(res) => {
-                if !save_path.join("utils").join("LatestFileList.bin").exists() {
-                    match write_to_file(
-                        &save_path.join("utils").join("LatestFileList.bin"),
-                        &res.bytes().await.unwrap().to_vec(),
-                    )
+        if let Ok(res) = request_file(&bin_url).await {
+            if !save_path.join("utils").join("LatestFileList.bin").exists() {
+                if let Err(_) = write_to_file(
+                    &save_path.join("utils").join("LatestFileList.bin"),
+                    &res.bytes().await.unwrap().to_vec(),
+                )
                     .await
-                    {
-                        Ok(_) => (),
-                        Err(_) => log::error!("Could not save LatestFileList.bin"),
-                    }
+                {
+                    log::error!("Could not save LatestFileList.bin");
                 }
             }
-            Err(_) => log::error!("Could not fetch LatestFileList.bin"),
+        } else {
+            log::error!("Could not fetch LatestFileList.bin")
         };
 
         let xml_url = &format!("{}/LatestFileList.xml", &self.filelist_url);
         // LatestFileList.xml TODO: Move this into their own functions!!
         match request_file(&xml_url).await {
             Ok(res) => {
-                let xml_text = res.text().await.unwrap_or("".to_owned());
+                let xml_text = res.text().await.unwrap_or(String::new());
 
                 if !save_path.join("LatestFileList.xml").exists() {
-                    match write_to_file(
+                    if let Err(_) = write_to_file(
                         &save_path.join("LatestFileList.xml"),
                         &xml_text.as_bytes().to_vec(),
                     )
-                    .await
+                        .await
                     {
-                        Ok(_) => (),
-                        Err(_) => log::error!("Could not save LatestFileList.xml"),
+                        log::error!("Could not save LatestFileList.xml");
                     }
                 }
 
@@ -121,7 +111,6 @@ impl HttpRequest {
                 let parsed = serde_json::from_str::<LatestFiles>(json.as_str())
                     .expect("Could not parse JSON");
 
-                // ! TODO: into_par_iter ???? Important! Rayon could speed up this process by 20ms 😳🤩
                 parsed
                     .latest_file_list
                     .iter()
@@ -150,7 +139,7 @@ impl HttpRequest {
                         }
                         // Bro give me some time to rest 😩😞
                         RecordUnion::RecordElementArray(r) => {
-                            r.iter().for_each(|el| {
+                            for el in r {
                                 if el.src_file_name.is_some() {
                                     let filename =
                                         el.src_file_name.as_ref().unwrap().value.as_ref().unwrap();
@@ -181,7 +170,7 @@ impl HttpRequest {
                                         });
                                     }
                                 }
-                            });
+                            }
                         }
                     });
 
@@ -193,14 +182,14 @@ impl HttpRequest {
                     &self.files.util_list.len()
                 );
 
-                Self::fetch_wads(self, &mut save_path).await;
+                Self::fetch_wads(self, save_path).await;
             }
             Err(_) => log::error!("Could not fetch LatestFileList.xml"),
         };
     }
 
     /// This is pure 🌟 Magic 🌟
-    async fn fetch_wads(&mut self, mut save_path: &mut PathBuf) {
+    async fn fetch_wads(&mut self, save_path: PathBuf) {
         let url = self.file_url.clone();
         futures::stream::iter(self.files.wad_list.clone().into_iter().map(|wad| {
             let url_cloned = url.clone();
@@ -232,9 +221,9 @@ impl HttpRequest {
                 }
             }
         }))
-        .buffer_unordered(self.max_concurrent_downloads)
-        .collect::<Vec<()>>()
-        .await;
+            .buffer_unordered(self.max_concurrent_downloads)
+            .collect::<Vec<()>>()
+            .await;
 
         println!(
             "{} {}fetched {} wad files",
@@ -243,11 +232,11 @@ impl HttpRequest {
             &self.files.wad_list.len(),
         );
 
-        Self::fetch_utils(self, &mut save_path).await;
+        Self::fetch_utils(self, save_path).await;
     }
 
     /// This is pure 🌟 Magic 🌟
-    async fn fetch_utils(&mut self, save_path: &mut PathBuf) {
+    async fn fetch_utils(&mut self, save_path: PathBuf) {
         println!("{} {}fetching util files", style("[5/6]").bold().dim(), BOX);
         let url = self.file_url.clone();
         futures::stream::iter(self.files.util_list.clone().into_iter().map(|util| {
@@ -280,9 +269,9 @@ impl HttpRequest {
                 }
             }
         }))
-        .buffer_unordered(self.max_concurrent_downloads)
-        .collect::<Vec<()>>()
-        .await;
+            .buffer_unordered(self.max_concurrent_downloads)
+            .collect::<Vec<()>>()
+            .await;
 
         println!(
             "{} {}fetched {} util files",
@@ -298,7 +287,8 @@ async fn request_file<T: AsRef<str>>(url: T) -> Result<reqwest::Response, reqwes
     let res = client
         .get(url.as_ref())
         .header("User-Agent", "KingsIsle Patcher");
-    Ok(res.send().await?)
+
+    res.send().await
 }
 
 async fn write_to_file(path: &PathBuf, content: &Vec<u8>) -> std::io::Result<()> {
