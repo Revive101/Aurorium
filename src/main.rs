@@ -6,7 +6,7 @@ use std::{
 };
 
 use axum::{routing::get, Extension, Router};
-use bpaf::{construct, short, OptionParser, Parser};
+use bpaf::{construct, long, short, OptionParser, Parser};
 use lazy_static::lazy_static;
 
 use util::explore_revisions;
@@ -29,6 +29,8 @@ struct Opt {
     revision: Option<String>,
     ip: SocketAddr,
     concurrent_downloads: usize,
+    rl_max_requests: u32,
+    rl_reset_duration: u32,
 }
 
 fn opts() -> OptionParser<Opt> {
@@ -55,7 +57,14 @@ fn opts() -> OptionParser<Opt> {
         .argument::<usize>("usize")
         .fallback(8);
 
-    construct!(Opt { verbose, revision, ip, concurrent_downloads })
+    let rl_max_requests = long("max_requests").help("Change the amount of requests a user can send before getting rate-limited by the server").argument::<u32>("u32").fallback(100);
+
+    let rl_reset_duration = long("reset_duration")
+        .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds)")
+        .argument::<u32>("u32")
+        .fallback(60);
+
+    construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
         .descr("By default, only the webserver will get started. If you want to fetch from a revision, use the --revision or -r parameter.")
@@ -82,8 +91,8 @@ async fn main() {
     }
 
     let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
-        100,
-        Duration::from_secs(60),
+        opts.rl_max_requests,
+        Duration::from_secs(u64::from(opts.rl_reset_duration)),
     )));
 
     // Initialize all routes
