@@ -1,6 +1,6 @@
 <h1 align="center">Aurorium</h1>
 <p align="center">Aurorium is the heart (*Not the core!*) of the Revive101 project, designed to manage the files associated with the Wizard101 client revival. We've open-sourced Aurorium to foster transparency, collaboration, and community involvement in our mission to bring back the magic of Wizard101.</p>
-
+<h4 align="center"><b>Disclaimer:</b> we are not affiliated with Wizard101Rewritten in any way! <a href="https://discord.gg/sMFgyNRDDM">Discord invite</a></h4> 
 -----------------
 
 - [Getting Started](#getting-started)
