@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::SocketAddr;
-use std::ops::Add;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -17,7 +16,7 @@ impl Default for RateLimiter {
     fn default() -> Self {
         Self {
             reset_duration: Duration::from_secs(60),
-            max_requests: 10, // 100
+            max_requests: 100, // 100
             ip_counts: Arc::new(Mutex::new(HashMap::new())),
         }
     }
