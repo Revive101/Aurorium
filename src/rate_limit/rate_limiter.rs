@@ -33,14 +33,14 @@ impl RateLimiter {
 
         let l = limiter.clone();
         std::thread::spawn(move || {
-            println!("{:?} running RateLimiter", std::thread::current().id());
+            log::info!("{:?} running RateLimiter", std::thread::current().id());
 
             loop {
                 // Do things..
                 l.ip_counts.clone().lock().unwrap().clear();
 
                 std::thread::sleep(limiter.reset_duration);
-                println!("RateLimiter reset...");
+                log::trace!("RateLimiter reset...");
             }
         });
 
