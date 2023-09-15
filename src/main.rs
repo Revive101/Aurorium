@@ -1,20 +1,22 @@
-use std::{net::SocketAddr, process, sync::Mutex};
-use std::sync::Arc;
+use std::{
+    net::SocketAddr,
+    process,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
-use axum::{Router, routing::get};
-use axum::middleware::AddExtension;
-use bpaf::{construct, OptionParser, Parser, short};
+use axum::{routing::get, Extension, Router};
+use bpaf::{construct, short, OptionParser, Parser};
 use lazy_static::lazy_static;
 
 use util::explore_revisions;
-use crate::rate_limit::rate_limiter::RateLimiter;
 
 use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
 mod http;
+mod rate_limit;
 mod routes;
 mod util;
-mod rate_limit;
 
 lazy_static! {
     pub static ref REVISIONS: Mutex<Vec<String>> = Mutex::new(vec![]);
@@ -79,14 +81,18 @@ async fn main() {
         process::exit(0);
     }
 
-    let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new()));
+    let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
+        100,
+        Duration::from_secs(60),
+    )));
 
     // Initialize all routes
     let app = Router::new()
         .route("/patcher/revisions", get(get_revisions))
         .route("/patcher/:revision/wads/:filename", get(get_wad))
         .route("/patcher/:revision", get(get_xml_filelist))
-        .route("/patcher/:revision/utils/:filename", get(get_util));
+        .route("/patcher/:revision/utils/:filename", get(get_util))
+        .layer(Extension(state));
 
     log::info!("Starting HTTP server @ {}", &opts.ip);
     match axum::Server::bind(&opts.ip)
