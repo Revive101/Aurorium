@@ -36,6 +36,8 @@ Check out our [Contributing Guidelines](TODO) for detailed information on how to
 Fork the repository, make your changes, and submit a pull request.
 Report bugs or suggest new features by opening [issues](https://github.com/Revive101/Aurorium/issues).
 
+ℹ If you've contributed to one of our projects you can receive the `@Contributor` role in our [discord](https://discord.gg/sMFgyNRDDM). *You must have linked GitHub to your Discord in order for us to give you the role*
+
 ## Community
 Join the Revive101 community on [discord](https://discord.gg/sMFgyNRDDM) to connect with fellow Wizards, developers, and enthusiasts.
 
