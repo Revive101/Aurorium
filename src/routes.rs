@@ -26,7 +26,7 @@ pub async fn get_revisions(
         return Err(RATE_LIMIT.into_response());
     }
 
-    let folders = match REVISIONS.lock() {
+    let folders = match REVISIONS.read() {
         Ok(r) => r.clone(),
         Err(why) => {
             log::error!("Could not lock REVISIONS, {why}");

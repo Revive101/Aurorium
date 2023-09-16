@@ -26,7 +26,7 @@ pub async fn explore_revisions() -> std::io::Result<()> {
         }
     }
 
-    let mut revisions = REVISIONS.lock().unwrap();
+    let mut revisions = REVISIONS.write().unwrap();
     *revisions = revisions_vec;
 
     Ok(())

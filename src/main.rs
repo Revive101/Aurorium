@@ -1,7 +1,7 @@
 use std::{
     net::SocketAddr,
     process,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
 
@@ -19,7 +19,7 @@ mod routes;
 mod util;
 
 lazy_static! {
-    pub static ref REVISIONS: Mutex<Vec<String>> = Mutex::new(vec![]);
+    pub static ref REVISIONS: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
 #[allow(dead_code)]
