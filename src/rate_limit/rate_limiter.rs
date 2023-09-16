@@ -4,10 +4,9 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-// A basic rate limiter implementation.
 #[derive(Clone, Debug)]
 pub struct RateLimiter {
-    ip_counts: Arc<Mutex<HashMap<SocketAddr, u32>>>, // IP address to (request count, last request time)
+    ip_counts: Arc<Mutex<HashMap<SocketAddr, u32>>>, // IP address & request count
     max_requests: u32,                               // Maximum requests allowed per minute
     reset_duration: Duration,                        // Duration for resetting request counts
 }
