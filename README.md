@@ -9,6 +9,9 @@ __________________
 - [Community](#community)
 - [License](#license)
 
+## Need to extract .wad files free and easily? We got you
+[KiWad-Unpacker](https://github.com/Phill030/KiWad-Unpacker) is a **free** fast and easy-to-use tool for unpacking .wad files. Whether you're a game modder or simply need to access the contents of a .wad file, this open-source project has got you covered. It's designed to be user-friendly and completely free.
+
 ## Getting Started
 
 These instructions will help you get a copy of Aurorium up and running on your local machine for development and testing purposes.
