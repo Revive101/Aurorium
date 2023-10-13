@@ -7,19 +7,19 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.20", features = ["headers"] }
 bpaf = "0.9.5"
-chrono = "0.4.30"
+chrono = "0.4.31"
 env_logger = "0.10.0"
 log = "0.4.20"
 quick-xml = { version = "0.30.0", features = ["serialize"] }
 quickxml_to_serde = { version = "0.5", features = ["json_types"] }
-reqwest = "0.11.20"
-rayon = "1.7.0"
-serde = { version = "1.0.188", features = ["derive"] }
+reqwest = "0.11.22"
+rayon = "1.8.0"
+serde = { version = "1.0.189", features = ["derive"] }
 serde_json = "1.0.107"
-tokio-util = { version = "0.7.8", features = ["io-util", "rt"] }
-tokio = { version = "1.32.0", features = ["full"] }
+tokio-util = { version = "0.7.9", features = ["io-util", "rt"] }
+tokio = { version = "1.33.0", features = ["full"] }
 futures = "0.3.28"
 console = "0.15.7"
-indicatif = "0.17.6"
+indicatif = "0.17.7"
 lazy_static = "1.4.0"
 tower = { version = "0.4.13", features = ["limit"] }
