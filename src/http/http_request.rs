@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use console::{Emoji, style};
+use console::{style, Emoji};
 use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
@@ -77,7 +77,7 @@ impl HttpRequest {
                     &save_path.join("utils").join("LatestFileList.bin"),
                     &res.bytes().await.unwrap().to_vec(),
                 )
-                    .await
+                .await
                 {
                     log::error!("Could not save LatestFileList.bin");
                 }
@@ -97,7 +97,7 @@ impl HttpRequest {
                         &save_path.join("LatestFileList.xml"),
                         &xml_text.as_bytes().to_vec(),
                     )
-                        .await
+                    .await
                     {
                         log::error!("Could not save LatestFileList.xml");
                     }
@@ -221,9 +221,9 @@ impl HttpRequest {
                 }
             }
         }))
-            .buffer_unordered(self.max_concurrent_downloads)
-            .collect::<Vec<()>>()
-            .await;
+        .buffer_unordered(self.max_concurrent_downloads)
+        .collect::<Vec<()>>()
+        .await;
 
         println!(
             "{} {}fetched {} wad files",
@@ -269,9 +269,9 @@ impl HttpRequest {
                 }
             }
         }))
-            .buffer_unordered(self.max_concurrent_downloads)
-            .collect::<Vec<()>>()
-            .await;
+        .buffer_unordered(self.max_concurrent_downloads)
+        .collect::<Vec<()>>()
+        .await;
 
         println!(
             "{} {}fetched {} util files",
