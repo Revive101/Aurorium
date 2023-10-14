@@ -70,7 +70,7 @@ fn opts() -> OptionParser<Opt> {
     construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
-        .descr("By default, only the webserver will get started. If you want to fetch from a revision, use the --revision or -r parameter.")
+        .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
 }
 
 #[tokio::main]
