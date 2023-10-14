@@ -1,7 +1,12 @@
-use std::{net::SocketAddr, process, sync::Mutex};
+use std::{
+    net::SocketAddr,
+    process,
+    sync::{Arc, Mutex, RwLock},
+    time::Duration,
+};
 
-use axum::{Router, routing::get};
-use bpaf::{construct, OptionParser, Parser, short};
+use axum::{routing::get, Extension, Router};
+use bpaf::{construct, long, short, OptionParser, Parser};
 use lazy_static::lazy_static;
 
 use util::explore_revisions;
@@ -9,11 +14,12 @@ use util::explore_revisions;
 use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
 mod http;
+mod rate_limit;
 mod routes;
 mod util;
 
 lazy_static! {
-    pub static ref REVISIONS: Mutex<Vec<String>> = Mutex::new(vec![]);
+    pub static ref REVISIONS: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
 #[allow(dead_code)]
@@ -23,6 +29,8 @@ struct Opt {
     revision: Option<String>,
     ip: SocketAddr,
     concurrent_downloads: usize,
+    rl_max_requests: u32,
+    rl_reset_duration: u32,
 }
 
 fn opts() -> OptionParser<Opt> {
@@ -33,7 +41,7 @@ fn opts() -> OptionParser<Opt> {
 
     let revision = short('r')
         .long("revision")
-        .help("Fetch from a revision string (Example: V_r739602.Wizard_1_520_0_Live)")
+        .help("Fetch from a revision string (Example V_r740872.Wizard_1_520)")
         .argument::<String>("String")
         .optional();
 
@@ -49,26 +57,25 @@ fn opts() -> OptionParser<Opt> {
         .argument::<usize>("usize")
         .fallback(8);
 
-    construct!(Opt { verbose, revision, ip, concurrent_downloads })
+    let rl_max_requests = long("max_requests").
+        help("Change the amount of requests a user can send before getting rate-limited by the server").
+        argument::<u32>("u32").
+        fallback(100);
+
+    let rl_reset_duration = long("reset_duration")
+        .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds)")
+        .argument::<u32>("u32")
+        .fallback(60);
+
+    construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
-        .descr("By default, only the webserver will get started. If you want to try to fetch from a revision, use the --revision or -r parameter.")
+        .descr("By default, only the webserver will get started. If you want to fetch from a revision, use the --revision or -r parameter.")
 }
 
 #[tokio::main]
 async fn main() {
     let opts = opts().run();
-
-    // File Logging
-    // let formatted_time = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    //
-    // let target = Box::new(
-    // std::fs::File::create(format!("{formatted_time}_server.log")).expect("Can't create file"),
-    // );
-    // env_logger::Builder::new()
-    //     .target(env_logger::Target::Pipe(target))
-    //     .filter(None, log::LevelFilter::Info)
-    //     .init();
 
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
@@ -86,12 +93,18 @@ async fn main() {
         process::exit(0);
     }
 
+    let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
+        opts.rl_max_requests,
+        Duration::from_secs(u64::from(opts.rl_reset_duration)),
+    )));
+
     // Initialize all routes
     let app = Router::new()
         .route("/patcher/revisions", get(get_revisions))
         .route("/patcher/:revision/wads/:filename", get(get_wad))
         .route("/patcher/:revision", get(get_xml_filelist))
-        .route("/patcher/:revision/utils/:filename", get(get_util));
+        .route("/patcher/:revision/utils/:filename", get(get_util))
+        .layer(Extension(state));
 
     log::info!("Starting HTTP server @ {}", &opts.ip);
     match axum::Server::bind(&opts.ip)
