@@ -31,6 +31,7 @@ struct Opt {
     concurrent_downloads: usize,
     rl_max_requests: u32,
     rl_reset_duration: u32,
+    rl_disable: bool,
 }
 
 fn opts() -> OptionParser<Opt> {
@@ -67,7 +68,11 @@ fn opts() -> OptionParser<Opt> {
         .argument::<u32>("u32")
         .fallback(60);
 
-    construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration })
+    let rl_disable = long("disable_ratelimit")
+        .help("Disable ratelimits")
+        .switch();
+
+    construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
         .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
@@ -96,6 +101,7 @@ async fn main() {
     let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
         opts.rl_max_requests,
         Duration::from_secs(u64::from(opts.rl_reset_duration)),
+        opts.rl_disable,
     )));
 
     // Initialize all routes
