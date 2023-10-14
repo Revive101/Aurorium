@@ -2,12 +2,15 @@
 <p align="center">Aurorium is the heart (*Not the core!*) of the Revive101 project, designed to manage the files associated with the Wizard101 client revival. We've open-sourced Aurorium to foster transparency, collaboration, and community involvement in our mission to bring back the magic of Wizard101.</p>
 <h4 align="center"><b>Disclaimer:</b> we are not affiliated with Wizard101Rewritten in any way! <a href="https://discord.gg/sMFgyNRDDM">Discord invite</a></h4>
 
----
+__________________
 
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [Community](#community)
 - [License](#license)
+
+## Need to extract .wad files free and easily? We got you
+[KiWad-Unpacker](https://github.com/Phill030/KiWad-Unpacker) is a **free** fast and easy-to-use tool for unpacking .wad files. Whether you're a game modder or simply need to access the contents of a .wad file, this open-source project has got you covered. It's designed to be user-friendly and completely free.
 
 ## Getting Started
 
@@ -53,6 +56,8 @@ We welcome contributions from the community! Whether you're an experienced devel
 Check out our [Contributing Guidelines](TODO) for detailed information on how to contribute.
 Fork the repository, make your changes, and submit a pull request.
 Report bugs or suggest new features by opening [issues](https://github.com/Revive101/Aurorium/issues).
+
+ℹ If you've contributed to one of our projects you can receive the `@Contributor` role in our [discord](https://discord.gg/sMFgyNRDDM). _You must have linked GitHub to your Discord in order for us to give you the role_
 
 ## Community
 
