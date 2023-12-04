@@ -15,7 +15,7 @@
 
 ## Getting Started
 
-These instructions will help you get a copy of Aurorium up and running on your local machine for development and testing purposes. Note: you DO NOT need the prerequisites if you just want to use the executable. You can find the latest executable [\*here\*](https://github.com/Revive101/Aurorium/releases/latest).
+These instructions will help you get a copy of Aurorium up and running on your local machine for development and testing purposes. Note: you **DO NOT** need all those prerequisites if you just want to use the executable. You can find the latest executable [\*here\*](https://github.com/Revive101/Aurorium/releases/latest).
 
 ### Prerequisites
 
