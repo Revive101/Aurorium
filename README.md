@@ -1,8 +1,8 @@
 <h1 align="center">Aurorium</h1>
 <p align="center">Aurorium is the heart (*Not the core!*) of the Revive101 project, designed to manage the files associated with the Wizard101 client revival. We've open-sourced Aurorium to foster transparency, collaboration, and community involvement in our mission to bring back the magic of Wizard101.</p>
-<h4 align="center"><b>Disclaimer:</b> we are not affiliated with Wizard101Rewritten in any way! <a href="https://discord.gg/sMFgyNRDDM">Discord invite</a></h4>
+<h4 align="center"><b>Disclaimer:</b> we are not affiliated with Wizard101Rewritten in any way and do not tolerate any use of this project in reference of Wizard101rewritten! <a href="https://discord.gg/sMFgyNRDDM">Discord invite</a></h4>
 
-__________________
+---
 
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
@@ -15,7 +15,7 @@ __________________
 
 ## Getting Started
 
-These instructions will help you get a copy of Aurorium up and running on your local machine for development and testing purposes.
+These instructions will help you get a copy of Aurorium up and running on your local machine for development and testing purposes. Note: you **DO NOT** need all those prerequisites if you just want to use the executable. You can find the latest executable [\*here\*](https://github.com/Revive101/Aurorium/releases/latest).
 
 ### Prerequisites
 
@@ -34,6 +34,25 @@ git clone https://github.com/Revive101/Aurorium.git
 ### Usage
 
 To run the executable, use `cargo run` alternatively you can build it using `cargo build` or in release `cargo build --release`.
+If you just want to host already fetched revisions of the game, simply start the executable. In order to fetch a revision, you need to provide the executable with the `--revision` / `-r` argument.
+
+If you get an `error: linker link.exe not found` error, that means you are missing the buildtools from Microsoft for C++. To solve this issue you can either install `Build Tools for Visual Studio 2019/2022` or use following commands on windows:
+
+```
+rustup toolchain install stable-x86_64-pc-windows-msvc
+```
+
+which installs the latest windows toolchain. Then use
+
+```
+rustup default stable-x86_64-pc-windows-msvc
+```
+
+to mark this toolchain as default, then try to build the project again.
+
+For 64-Bit Linux-Based systems, you need to use `x86_64-unknown-linux-gnu` as target.
+
+The structure of a revision looks like following: `V_r[Major].[Minor]`. Sometimes, the Minor version can even be `WizardDev`. Example: `V_r746756.WizardDev`.
 
 ### Parameters
 
