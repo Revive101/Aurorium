@@ -34,7 +34,7 @@ git clone https://github.com/Revive101/Aurorium.git
 ### Usage
 
 To run the executable, use `cargo run` alternatively you can build it using `cargo build` or in release `cargo build --release`.
-If you just want to host already fetched revisions of the game, simply start the executable. In order to fetch a revision, you need to provide the executable with the `--revision` / `-r` argument.
+Since Version 2.0, Aurorium automatically fetches the newest Revision from their server and downloads all resources associated with it. (In Version < 2.0 you need to provide the executable with `--revision` or `-r`)
 
 If you get an `error: linker link.exe not found` error, that means you are missing the buildtools from Microsoft for C++. To solve this issue you can either install `Build Tools for Visual Studio 2019/2022` or use following commands on windows:
 
@@ -49,7 +49,6 @@ rustup default stable-x86_64-pc-windows-msvc
 ```
 
 to mark this toolchain as default, then try to build the project again.
-
 For 64-Bit Linux-Based systems, you need to use `x86_64-unknown-linux-gnu` as target.
 
 The structure of a revision looks like following: `V_r[Major].[Minor]`. Sometimes, the Minor version can even be `WizardDev`. Example: `V_r746756.WizardDev`.
@@ -59,14 +58,14 @@ The structure of a revision looks like following: `V_r[Major].[Minor]`. Sometime
 You can provide the (built) executable with following parameters:
 
 ```
--v, --verbose             Activate verbosity (Default: warn)
--r, --revision=<String>   Fetch from a revision string (Example V_r740872.Wizard_1_520)
--i, --ip=<SocketAddr>     Override the default endpoint IP (Default: 0.0.0.0:12369)
+-v, --verbose               Activate verbosity (Default: warn)
+-i, --ip=<SocketAddr>       Override the default endpoint IP (Default: 0.0.0.0:12369)
 -c, --concurrent_downloads=<usize>  Override the count of concurrent downloads at once (Default: 8)
-    --max_requests=<u32>  Change the amount of requests a user can send before getting rate-limited by the server
+    --max_requests=<u32>    Change the amount of requests a user can send before getting rate-limited by the server
     --reset_duration=<u32>  Change the duration for the interval in which the rate-limit list get's cleared (In seconds)
-    --disable_ratelimit   Disable ratelimits
--h, --help                Prints help information
+    --disable_ratelimit     Disable ratelimits
+    --revision_check_interval=<u64>  Change the interval for checking for new revisions (In minutes)
+-h, --help                  Prints help information
 ```
 
 ## Contributing
