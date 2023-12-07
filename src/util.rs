@@ -30,7 +30,6 @@ pub async fn explore_revisions() -> std::io::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy)]
 pub enum Endianness {
     Little,
     Big,
