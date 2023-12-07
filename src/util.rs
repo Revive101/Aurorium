@@ -1,9 +1,7 @@
-use std::net::SocketAddr;
-
+use crate::REVISIONS;
 use axum::headers::UserAgent;
 use chrono::Local;
-
-use crate::REVISIONS;
+use std::net::SocketAddr;
 
 pub fn log_access(addr: SocketAddr, header: &UserAgent, route: &str) {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
@@ -30,4 +28,31 @@ pub async fn explore_revisions() -> std::io::Result<()> {
     *revisions = revisions_vec;
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Endianness {
+    Little,
+    Big,
+}
+
+pub fn hex_decode(hex_string: &str, endianness: Endianness) -> Option<Vec<u8>> {
+    // Check if the hex string is a valid length
+    if hex_string.len() % 2 != 0 {
+        return None;
+    }
+
+    // Iterate over pairs of characters and convert them to u8
+    let bytes: Option<Vec<u8>> = (0..hex_string.len())
+        .step_by(2)
+        .map(|i| {
+            let byte = u8::from_str_radix(&hex_string[i..i + 2], 16).ok()?;
+            match endianness {
+                Endianness::Little => Some(byte),
+                Endianness::Big => Some(byte.reverse_bits()), // For Big Endian, reverse the bits
+            }
+        })
+        .collect();
+
+    bytes
 }
