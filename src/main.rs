@@ -1,20 +1,21 @@
+use crate::{
+    revision_checker::revision_checker::RevisionChecker,
+    routes::{get_revisions, get_util, get_wad, get_xml_filelist},
+};
+use axum::{routing::get, Extension, Router};
+use bpaf::{construct, long, short, OptionParser, Parser};
+use lazy_static::lazy_static;
 use std::{
     net::SocketAddr,
     process,
     sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
-
-use axum::{routing::get, Extension, Router};
-use bpaf::{construct, long, short, OptionParser, Parser};
-use lazy_static::lazy_static;
-
 use util::explore_revisions;
-
-use crate::routes::{get_revisions, get_util, get_wad, get_xml_filelist};
 
 mod http;
 mod rate_limit;
+mod revision_checker;
 mod routes;
 mod util;
 
@@ -84,6 +85,10 @@ async fn main() {
 
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
+
+    if let Ok(checker) = RevisionChecker::new() {
+        checker.start::<256>().await;
+    }
 
     if opts.revision.is_some() {
         let mut req =
