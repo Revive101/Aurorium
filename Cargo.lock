@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "aurorium"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "axum",
  "bpaf",
@@ -86,6 +86,7 @@ dependencies = [
  "quick-xml 0.31.0",
  "quickxml_to_serde",
  "rayon",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
