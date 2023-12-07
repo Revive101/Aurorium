@@ -5,17 +5,19 @@ use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
 
+use crate::revision_checker::revision_checker::Revision;
+
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
-    pub filelist_url: String,
-    pub file_url: String,
+    pub list_file_url: String,
+    pub url_prefix: String,
     pub files: FileList,
+    pub revision: String,
     max_concurrent_downloads: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FileList {
-    pub revision: String,
     pub wad_list: Vec<File>,
     pub util_list: Vec<File>,
 }
@@ -40,8 +42,7 @@ static LINK: Emoji<'_, '_> = Emoji("🔗  ", "");
 static BOX: Emoji<'_, '_> = Emoji("📦  ", "");
 
 impl HttpRequest {
-    pub async fn new(revision: String, concurrent: usize) -> HttpRequest {
-        const BASE_URL: &str = "http://versionec.us.wizard101.com/WizPatcher";
+    pub async fn new(revision: Revision, max_concurrent_downloads: usize) -> Self {
         println!(
             "{} {}Resolving revision...",
             style("[1/6]").bold().dim(),
@@ -49,14 +50,11 @@ impl HttpRequest {
         );
 
         HttpRequest {
-            filelist_url: format!("{BASE_URL}/{revision}/Windows"),
-            file_url: format!("{BASE_URL}/{revision}/LatestBuild"),
-            max_concurrent_downloads: concurrent,
-            files: FileList {
-                wad_list: Vec::new(),
-                util_list: Vec::new(),
-                revision: revision.replace("\r\n", ""),
-            },
+            revision: revision.revision,
+            url_prefix: revision.url_prefix,
+            list_file_url: revision.list_file_url,
+            files: FileList::default(),
+            max_concurrent_downloads,
         }
     }
 
@@ -67,11 +65,9 @@ impl HttpRequest {
             TRUCK
         );
 
-        let save_path = PathBuf::from("files").join(&self.files.revision);
-        let bin_url = &format!("{}/LatestFileList.bin", &self.filelist_url);
+        let save_path = PathBuf::from("files").join(&self.revision);
 
-        // LatestFileList.bin TODO: Move this into their own functions!!
-        if let Ok(res) = request_file(&bin_url).await {
+        if let Ok(res) = request_file(&self.list_file_url).await {
             if !save_path.join("utils").join("LatestFileList.bin").exists() {
                 if let Err(_) = write_to_file(
                     &save_path.join("utils").join("LatestFileList.bin"),
@@ -86,9 +82,10 @@ impl HttpRequest {
             log::error!("Could not fetch LatestFileList.bin")
         };
 
-        let xml_url = &format!("{}/LatestFileList.xml", &self.filelist_url);
-        // LatestFileList.xml TODO: Move this into their own functions!!
-        match request_file(&xml_url).await {
+        let xml_url = &self
+            .list_file_url
+            .replace("LatestFileList.bin", "LatestFileList.xml");
+        match request_file(xml_url).await {
             Ok(res) => {
                 let xml_text = res.text().await.unwrap_or(String::new());
 
@@ -175,7 +172,7 @@ impl HttpRequest {
                     });
 
                 println!(
-                    "{} {}Inserted {} wad files & {} util files...",
+                    "{} {}Inserted {} wad files & {} util files into list...",
                     style("[3/6]").bold().dim(),
                     LINK,
                     &self.files.wad_list.len(),
@@ -190,7 +187,7 @@ impl HttpRequest {
 
     /// This is pure 🌟 Magic 🌟
     async fn fetch_wads(&mut self, save_path: PathBuf) {
-        let url = self.file_url.clone();
+        let url = self.url_prefix.clone();
         futures::stream::iter(self.files.wad_list.clone().into_iter().map(|wad| {
             let url_cloned = url.clone();
 
@@ -238,7 +235,7 @@ impl HttpRequest {
     /// This is pure 🌟 Magic 🌟
     async fn fetch_utils(&mut self, save_path: PathBuf) {
         println!("{} {}fetching util files", style("[5/6]").bold().dim(), BOX);
-        let url = self.file_url.clone();
+        let url = self.url_prefix.clone();
         futures::stream::iter(self.files.util_list.clone().into_iter().map(|util| {
             let url_cloned = url.clone();
 
