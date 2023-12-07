@@ -33,6 +33,7 @@ struct Opt {
     rl_max_requests: u32,
     rl_reset_duration: u32,
     rl_disable: bool,
+    rc_interval: u64,
 }
 
 fn opts() -> OptionParser<Opt> {
@@ -67,7 +68,12 @@ fn opts() -> OptionParser<Opt> {
         .help("Disable ratelimits")
         .switch();
 
-    construct!(Opt { verbose, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable })
+    let rc_interval = long("revision_check_interval")
+        .help("Change the interval for checking for new revisions (In minutes)")
+        .argument::<u64>("u64")
+        .fallback(0);
+
+    construct!(Opt { verbose, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable, rc_interval })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
         .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
@@ -80,18 +86,15 @@ async fn main() {
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
-    let fetched_revision = Revision::check::<256>().await.unwrap();
-    if explore_revisions().await.is_err()
-        || !REVISIONS
-            .read()
-            .unwrap()
-            .to_vec()
-            .contains(&fetched_revision.revision)
-    {
-        let mut req = HttpRequest::new(fetched_revision, opts.concurrent_downloads).await;
-        req.propogate_filelist().await;
-    } else {
-        log::warn!("Newest revision is already fetched!")
+    check_revision(opts.concurrent_downloads).await;
+
+    if opts.rc_interval > 0 {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(60 * opts.rc_interval)).await;
+                check_revision(opts.concurrent_downloads).await;
+            }
+        });
     }
 
     let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
@@ -115,5 +118,21 @@ async fn main() {
     {
         Ok(_) => (),
         Err(why) => log::error!("Could not start Axum server! {}", why),
+    }
+}
+
+async fn check_revision(concurrent_downloads: usize) {
+    let fetched_revision = Revision::check::<256>().await.unwrap();
+    if explore_revisions().await.is_err()
+        || !REVISIONS
+            .read()
+            .unwrap()
+            .to_vec()
+            .contains(&fetched_revision.revision)
+    {
+        let mut req = HttpRequest::new(fetched_revision, concurrent_downloads).await;
+        req.propogate_filelist().await;
+    } else {
+        log::warn!("Newest revision is already fetched!")
     }
 }
