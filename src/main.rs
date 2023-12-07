@@ -1,13 +1,13 @@
 use crate::{
-    revision_checker::revision_checker::RevisionChecker,
+    http::http_request::HttpRequest,
     routes::{get_revisions, get_util, get_wad, get_xml_filelist},
 };
 use axum::{routing::get, Extension, Router};
 use bpaf::{construct, long, short, OptionParser, Parser};
 use lazy_static::lazy_static;
+use revision_checker::revision_checker::Revision;
 use std::{
     net::SocketAddr,
-    process,
     sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
@@ -28,7 +28,6 @@ lazy_static! {
 #[derive(Debug, Clone)]
 struct Opt {
     verbose: bool,
-    revision: Option<String>,
     ip: SocketAddr,
     concurrent_downloads: usize,
     rl_max_requests: u32,
@@ -41,12 +40,6 @@ fn opts() -> OptionParser<Opt> {
         .long("verbose")
         .help("Activate verbosity (Default: warn)")
         .switch();
-
-    let revision = short('r')
-        .long("revision")
-        .help("Fetch from a revision string (Example V_r740872.Wizard_1_520)")
-        .argument::<String>("String")
-        .optional();
 
     let ip = short('i')
         .long("ip")
@@ -74,7 +67,7 @@ fn opts() -> OptionParser<Opt> {
         .help("Disable ratelimits")
         .switch();
 
-    construct!(Opt { verbose, revision, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable })
+    construct!(Opt { verbose, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
         .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
@@ -87,21 +80,18 @@ async fn main() {
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
-    if let Ok(checker) = RevisionChecker::new() {
-        checker.start::<256>().await;
-    }
-
-    if opts.revision.is_some() {
-        let mut req =
-            http::http_request::HttpRequest::new(opts.revision.unwrap(), opts.concurrent_downloads)
-                .await;
+    let fetched_revision = Revision::check::<256>().await.unwrap();
+    if explore_revisions().await.is_err()
+        || !REVISIONS
+            .read()
+            .unwrap()
+            .to_vec()
+            .contains(&fetched_revision.revision)
+    {
+        let mut req = HttpRequest::new(fetched_revision, opts.concurrent_downloads).await;
         req.propogate_filelist().await;
-    }
-
-    // If there are no files to host, why have the server running anyways? 🤓☝
-    if (explore_revisions().await).is_err() {
-        log::error!("There are no revisions for the server to host! (Quitting)");
-        process::exit(0);
+    } else {
+        log::warn!("Newest revision is already fetched!")
     }
 
     let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
