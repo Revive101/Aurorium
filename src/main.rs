@@ -13,6 +13,7 @@ use std::{
 };
 use util::explore_revisions;
 
+pub mod errors;
 mod http;
 mod rate_limit;
 mod revision_checker;
