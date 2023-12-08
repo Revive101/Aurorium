@@ -29,22 +29,19 @@ impl Revision {
         let mut ip = format!("{URL}:{PORT}").to_socket_addrs()?;
         log::info!("Successfully connected to {URL}");
 
-        Ok(TcpStream::connect_timeout(
-            &ip.next().unwrap(),
-            Duration::from_secs(20),
-        )?)
+        TcpStream::connect_timeout(&ip.next().unwrap(), Duration::from_secs(20))
     }
 
     pub async fn check<const N: usize>() -> Result<Revision, RevisionError> {
         let mut stream = Self::create_stream()?;
 
         let mut buffer = [0u8; N];
-        stream.read(&mut buffer)?; // We don't need the SessionOffer
+        stream.read_exact(&mut buffer)?; // We don't need the SessionOffer
         buffer = [0u8; N];
 
-        stream.write_all(&hex_decode(SESSION_ACCEPT, Endianness::Little).unwrap()[..])?;
+        stream.write_all(&hex_decode(SESSION_ACCEPT, &Endianness::Little).unwrap()[..])?;
 
-        stream.read(&mut buffer)?;
+        stream.read_exact(&mut buffer)?;
         let mut cursor = Cursor::new(buffer);
 
         if !Self::is_magic_header(&mut cursor).await {
@@ -97,17 +94,15 @@ impl Revision {
         String::from_utf8_lossy(&buff).to_string()
     }
 
-    pub fn parse_revision(url: &String) -> String {
+    pub fn parse_revision(url: &str) -> String {
         let reg = Regex::new(r"/V_([^/]+)/").unwrap();
 
-        if let Some(captures) = reg.captures(&url) {
+        if let Some(captures) = reg.captures(url) {
             if let Some(version) = captures.get(1) {
                 return format!("V_{}", version.as_str());
-            } else {
-                return String::from("");
             }
-        } else {
-            return String::from("");
         }
+
+        String::new()
     }
 }
