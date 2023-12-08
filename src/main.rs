@@ -87,7 +87,6 @@ async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
     check_revision(opts.concurrent_downloads).await;
-
     if opts.rc_interval > 0 {
         tokio::spawn(async move {
             loop {

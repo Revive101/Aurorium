@@ -1,11 +1,9 @@
-use std::{collections::HashMap, path::PathBuf};
-
+use crate::revision_checker::revision_checker::Revision;
 use console::{style, Emoji};
 use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
-
-use crate::revision_checker::revision_checker::Revision;
+use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
