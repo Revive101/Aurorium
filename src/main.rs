@@ -76,7 +76,7 @@ fn opts() -> OptionParser<Opt> {
     construct!(Opt { verbose, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable, rc_interval })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
-        .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
+        .descr("This project is not associated with Wizard101rewritten in any way. Any use of this in reference of Wizard101rewritten will not be tolerated.")
 }
 
 #[tokio::main]
