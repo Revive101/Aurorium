@@ -36,12 +36,12 @@ impl Revision {
         let mut stream = Self::create_stream()?;
 
         let mut buffer = [0u8; N];
-        stream.read_exact(&mut buffer)?; // We don't need the SessionOffer
+        stream.read(&mut buffer)?; // We don't need the SessionOffer
         buffer = [0u8; N];
 
         stream.write_all(&hex_decode(SESSION_ACCEPT, &Endianness::Little).unwrap()[..])?;
 
-        stream.read_exact(&mut buffer)?;
+        stream.read(&mut buffer)?;
         let mut cursor = Cursor::new(buffer);
 
         if !Self::is_magic_header(&mut cursor).await {
