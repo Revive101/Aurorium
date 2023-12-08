@@ -35,7 +35,7 @@ pub enum Endianness {
     Big,
 }
 
-pub fn hex_decode(hex_string: &str, endianness: Endianness) -> Option<Vec<u8>> {
+pub fn hex_decode(hex_string: &str, endianness: &Endianness) -> Option<Vec<u8>> {
     // Check if the hex string is a valid length
     if hex_string.len() % 2 != 0 {
         return None;
