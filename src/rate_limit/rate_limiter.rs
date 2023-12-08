@@ -59,12 +59,12 @@ impl RateLimiter {
                 *requests += 1;
 
                 return requests < &mut self.max_requests;
-            } else {
-                lock.insert(ip, 1);
-                return true;
             }
+
+            lock.insert(ip, 1);
+            return true;
         }
 
-        return false;
+        false
     }
 }
