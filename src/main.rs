@@ -131,6 +131,7 @@ async fn check_revision(concurrent_downloads: usize) {
     {
         let mut req = HttpRequest::new(fetched_revision, concurrent_downloads);
         req.propogate_filelist().await;
+
         explore_revisions().await.unwrap();
     } else {
         log::info!("Newest revision is already fetched!");
