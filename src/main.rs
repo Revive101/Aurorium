@@ -76,7 +76,7 @@ fn opts() -> OptionParser<Opt> {
     construct!(Opt { verbose, ip, concurrent_downloads, rl_max_requests, rl_reset_duration, rl_disable, rc_interval })
         .to_options()
         .footer("Copyright (c) 2023 Phill030")
-        .descr("By default, only the webserver will start. If you want to fetch from a revision, use the --revision or -r parameter.")
+        .descr("This project is not associated with Wizard101rewritten in any way. Any use of this in reference of Wizard101rewritten will not be tolerated.")
 }
 
 #[tokio::main]
@@ -87,7 +87,6 @@ async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
     check_revision(opts.concurrent_downloads).await;
-
     if opts.rc_interval > 0 {
         tokio::spawn(async move {
             loop {
@@ -130,9 +129,11 @@ async fn check_revision(concurrent_downloads: usize) {
             .to_vec()
             .contains(&fetched_revision.revision)
     {
-        let mut req = HttpRequest::new(fetched_revision, concurrent_downloads).await;
+        let mut req = HttpRequest::new(fetched_revision, concurrent_downloads);
         req.propogate_filelist().await;
+
+        explore_revisions().await.unwrap();
     } else {
-        log::warn!("Newest revision is already fetched!")
+        log::info!("Newest revision is already fetched!");
     }
 }

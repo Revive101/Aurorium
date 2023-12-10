@@ -1,11 +1,9 @@
-use std::{collections::HashMap, path::PathBuf};
-
+use crate::revision_checker::revision_checker::Revision;
 use console::{style, Emoji};
 use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
-
-use crate::revision_checker::revision_checker::Revision;
+use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -42,7 +40,7 @@ static LINK: Emoji<'_, '_> = Emoji("🔗  ", "");
 static BOX: Emoji<'_, '_> = Emoji("📦  ", "");
 
 impl HttpRequest {
-    pub async fn new(revision: Revision, max_concurrent_downloads: usize) -> Self {
+    pub fn new(revision: Revision, max_concurrent_downloads: usize) -> Self {
         println!(
             "{} {}Resolving revision...",
             style("[1/6]").bold().dim(),
@@ -79,7 +77,7 @@ impl HttpRequest {
                 }
             }
         } else {
-            log::error!("Could not fetch LatestFileList.bin")
+            log::error!("Could not fetch LatestFileList.bin");
         };
 
         let xml_url = &self
@@ -199,15 +197,12 @@ impl HttpRequest {
                 if !path.exists() {
                     match request_file(format!("{}/{}", &url_cloned, &wad.filename)).await {
                         Ok(res) => {
-                            let bytes = res
-                                .bytes()
-                                .await
-                                .expect("Could not convert to bytes!")
-                                .to_vec();
-
-                            write_to_file(&path, &bytes).await.unwrap();
-
-                            log::info!("[✔] Fetched {}", wad.filename);
+                            if let Ok(bytes) = res.bytes().await {
+                                write_to_file(&path, &bytes.to_vec()).await.unwrap();
+                                log::info!("[✔] Fetched {}", wad.filename);
+                            } else {
+                                log::warn!("[❌] Could not convert response to bytes");
+                            }
                         }
                         Err(why) => {
                             log::warn!("[❌] Could not fetch {}, {}", wad.filename, why);
