@@ -55,21 +55,19 @@ fn opts() -> OptionParser<Opt> {
         .fallback(8);
 
     let rl_max_requests = long("max_requests").
-        help("Change the amount of requests a user can send before getting rate-limited by the server").
+        help("Change the amount of requests a user can send before getting rate-limited by the server (Default: 100)").
         argument::<u32>("u32").
         fallback(100);
 
     let rl_reset_duration = long("reset_duration")
-        .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds)")
+        .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds) (Default: 60)")
         .argument::<u32>("u32")
         .fallback(60);
 
-    let rl_disable = long("disable_ratelimit")
-        .help("Disable ratelimits")
-        .switch();
+    let rl_disable = long("disable_ratelimit").help("Disable ratelimit").switch();
 
     let rc_interval = long("revision_check_interval")
-        .help("Change the interval for checking for new revisions (In minutes)")
+        .help("Change the interval for checking for new revisions (In minutes)  (Default: 0)")
         .argument::<u64>("u64")
         .fallback(0);
 
