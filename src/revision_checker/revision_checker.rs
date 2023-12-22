@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use regex::Regex;
 use std::{
     io::{Cursor, Read, Write},
@@ -18,6 +19,32 @@ const SESSION_ACCEPT: &str =
     "0DF02700000000000802220000000000000000000000000000000000000000000000000000000000000000";
 const SERVICE_ID: u8 = 8; // PATCH
 const MESSAGE_ID: u8 = 2; // MSG_LATEST_FILE_LIST_V2
+
+type ByteCursor<const N: usize> = Cursor<[u8; N]>;
+#[async_trait]
+pub trait WizIntegration {
+    async fn read_bytestring<const N: usize>(&mut self) -> String;
+    async fn is_magic_header<const N: usize>(&mut self) -> bool;
+}
+
+#[async_trait]
+impl<const M: usize> WizIntegration for ByteCursor<M> {
+    async fn read_bytestring<const N: usize>(&mut self) -> String {
+        let len = self.read_u16_le().await.unwrap();
+        let mut buff = vec![0u8; len as usize];
+
+        tokio::io::AsyncReadExt::read_exact(self, &mut buff)
+            .await
+            .unwrap();
+
+        String::from_utf8_lossy(&buff).to_string()
+    }
+
+    async fn is_magic_header<const N: usize>(&mut self) -> bool {
+        let magic_header = self.read_u16_le().await.unwrap();
+        magic_header.to_le_bytes().eq(&MAGIC_HEADER)
+    }
+}
 
 pub struct Revision {
     pub list_file_url: String,
@@ -42,7 +69,7 @@ impl Revision {
         stream.write_all(&hex_decode(SESSION_ACCEPT, &Endianness::Little).unwrap()[..])?;
 
         stream.read(&mut buffer)?;
-        let mut cursor = Cursor::new(buffer);
+        let mut cursor: ByteCursor<N> = Cursor::new(buffer);
 
         if !Self::is_magic_header(&mut cursor).await {
             log::error!("Received invalid MagicHeader sequence");
@@ -76,22 +103,6 @@ impl Revision {
             url_prefix,
             revision: Self::parse_revision(&list_file_url),
         })
-    }
-
-    async fn is_magic_header<const N: usize>(cursor: &mut Cursor<[u8; N]>) -> bool {
-        let magic_header = cursor.read_u16_le().await.unwrap();
-        magic_header.to_le_bytes().eq(&MAGIC_HEADER)
-    }
-
-    async fn read_bytestring<const N: usize>(cursor: &mut Cursor<[u8; N]>) -> String {
-        let len = cursor.read_u16_le().await.unwrap();
-        let mut buff = vec![0u8; len as usize];
-
-        tokio::io::AsyncReadExt::read_exact(cursor, &mut buff)
-            .await
-            .unwrap();
-
-        String::from_utf8_lossy(&buff).to_string()
     }
 
     pub fn parse_revision(url: &str) -> String {

@@ -118,6 +118,12 @@ async fn main() {
         Ok(_) => (),
         Err(why) => log::error!("Could not start Axum server! {}", why),
     }
+
+    /* 3 Threads:
+        1. Fileserver
+        2. Ratelimiter
+        3. Fetcher
+    */
 }
 
 async fn check_revision(concurrent_downloads: usize) {
