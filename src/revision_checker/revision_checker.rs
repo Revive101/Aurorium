@@ -12,14 +12,6 @@ use crate::{
     util::{hex_decode, Endianness},
 };
 
-const URL: &str = "patch.us.wizard101.com";
-const PORT: &str = "12500";
-const MAGIC_HEADER: [u8; 2] = [0x0D, 0xF0];
-const SESSION_ACCEPT: &str =
-    "0DF02700000000000802220000000000000000000000000000000000000000000000000000000000000000";
-const SERVICE_ID: u8 = 8; // PATCH
-const MESSAGE_ID: u8 = 2; // MSG_LATEST_FILE_LIST_V2
-
 type ByteCursor<const N: usize> = Cursor<[u8; N]>;
 #[async_trait]
 pub trait WizIntegration {
@@ -46,6 +38,14 @@ impl<const M: usize> WizIntegration for ByteCursor<M> {
     }
 }
 
+const URL: &str = "patch.us.wizard101.com";
+const PORT: &str = "12500";
+const MAGIC_HEADER: [u8; 2] = [0x0D, 0xF0];
+const SESSION_ACCEPT: &str =
+    "0DF02700000000000802220000000000000000000000000000000000000000000000000000000000000000";
+const SERVICE_ID: u8 = 8; // PATCH
+const MESSAGE_ID: u8 = 2; // MSG_LATEST_FILE_LIST_V2
+
 pub struct Revision {
     pub list_file_url: String,
     pub url_prefix: String,
@@ -71,7 +71,7 @@ impl Revision {
         stream.read(&mut buffer)?;
         let mut cursor: ByteCursor<N> = Cursor::new(buffer);
 
-        if !Self::is_magic_header(&mut cursor).await {
+        if !cursor.is_magic_header::<N>().await {
             log::error!("Received invalid MagicHeader sequence");
             return Err(RevisionError::InvalidMagicHeader);
         }
@@ -91,10 +91,10 @@ impl Revision {
 
         let _dml_length = cursor.read_u16_le().await?;
         let _latest_version = cursor.read_u32_le().await?;
-        let _list_file_name = Self::read_bytestring(&mut cursor).await;
+        let _list_file_name = cursor.read_bytestring::<N>().await;
         let _ = cursor.read_u128_le().await?;
-        let list_file_url = Self::read_bytestring(&mut cursor).await;
-        let url_prefix = Self::read_bytestring(&mut cursor).await;
+        let list_file_url = cursor.read_bytestring::<N>().await;
+        let url_prefix = cursor.read_bytestring::<N>().await;
 
         stream.shutdown(std::net::Shutdown::Both)?;
 
