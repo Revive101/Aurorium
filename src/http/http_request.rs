@@ -47,7 +47,7 @@ impl HttpRequest {
             LOOKING_GLASS
         );
 
-        HttpRequest {
+        Self {
             revision: revision.revision,
             url_prefix: revision.url_prefix,
             list_file_url: revision.list_file_url,
@@ -170,7 +170,7 @@ impl HttpRequest {
                     });
 
                 println!(
-                    "{} {}Inserted {} wad files & {} util files into list...",
+                    "{} {}Inserted {} wads & {} util files into list...",
                     style("[3/6]").bold().dim(),
                     LINK,
                     &self.files.wad_list.len(),
@@ -274,7 +274,10 @@ impl HttpRequest {
     }
 }
 
-async fn request_file<T: AsRef<str>>(url: T) -> Result<reqwest::Response, reqwest::Error> {
+async fn request_file<T>(url: T) -> Result<reqwest::Response, reqwest::Error>
+where
+    T: AsRef<str>,
+{
     let client = reqwest::Client::new();
     let res = client
         .get(url.as_ref())
