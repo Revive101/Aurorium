@@ -12,6 +12,7 @@ use crate::{
     util::{hex_decode, Endianness},
 };
 
+// This just looks smart 🤓
 type ByteCursor<const N: usize> = Cursor<[u8; N]>;
 #[async_trait]
 pub trait WizIntegration {
