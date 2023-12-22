@@ -106,11 +106,11 @@ impl Revision {
     }
 
     pub fn parse_revision(url: &str) -> String {
-        let reg = Regex::new(r"/V_([^/]+)/").unwrap();
+        let reg = Regex::new(r"/(V_[^/]+)/").unwrap();
 
         if let Some(captures) = reg.captures(url) {
             if let Some(version) = captures.get(1) {
-                return format!("V_{}", version.as_str());
+                return version.as_str().to_string();
             }
         }
 
