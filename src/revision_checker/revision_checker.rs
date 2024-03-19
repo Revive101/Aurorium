@@ -71,7 +71,7 @@ impl Revision {
         stream.read(&mut buffer)?;
         let mut cursor: ByteCursor<N> = Cursor::new(buffer);
 
-        if !Self::is_magic_header(&mut cursor).await {
+        if !cursor.is_magic_header::<N>().await {
             log::error!("Received invalid MagicHeader sequence");
             return Err(RevisionError::InvalidMagicHeader);
         }
@@ -91,10 +91,10 @@ impl Revision {
 
         let _dml_length = cursor.read_u16_le().await?;
         let _latest_version = cursor.read_u32_le().await?;
-        let _list_file_name = Self::read_bytestring(&mut cursor).await;
+        let _list_file_name = cursor.read_bytestring::<N>().await;
         let _ = cursor.read_u128_le().await?;
-        let list_file_url = Self::read_bytestring(&mut cursor).await;
-        let url_prefix = Self::read_bytestring(&mut cursor).await;
+        let list_file_url = cursor.read_bytestring::<N>().await;
+        let url_prefix = cursor.read_bytestring::<N>().await;
 
         stream.shutdown(std::net::Shutdown::Both)?;
 
