@@ -7,23 +7,26 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.20", features = ["headers"] }
 # axum-extra = { version = "0.9.0", features = ["typed-header"] } # SOON
-bpaf = "0.9.8"
-chrono = "0.4.31"
-console = "0.15.7"
-env_logger = "0.10.1"
-futures = "0.3.29"
-indicatif = "0.17.7"
+bpaf = "0.9.11"
+chrono = "0.4.35"
+console = "0.15.8"
+env_logger = "0.11.3"
+futures = "0.3.30"
+indicatif = "0.17.8"
 lazy_static = "1.4.0"
-log = "0.4.20"
+log = "0.4.21"
 quick-xml = { version = "0.31.0", features = ["serialize"] }
-quickxml_to_serde = { version = "0.5", features = ["json_types"] }
-regex = "1.10.2"
+quickxml_to_serde = { version = "0.6.0", features = ["json_types"] }
+regex = "1.10.4"
 reqwest = "0.11.23"
-rayon = "1.8.0"
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-thiserror = "1.0.51"
+rayon = "1.10.0"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+strum_macros = "0.26.2"
+strum = "0.26.2"
+thiserror = "1.0.52"
 tokio-util = { version = "0.7.10", features = ["io-util", "rt"] }
-tokio = { version = "1.35.1", features = ["full"] }
+tokio = { version = "1.36.0", features = ["full"] }
 tower = { version = "0.4.13", features = ["limit"] }
-async-trait = "0.1.75"
+async-trait = "0.1.79"
+anyhow = "1.0.81"
