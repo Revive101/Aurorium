@@ -22,6 +22,8 @@ mod util;
 
 lazy_static! {
     pub static ref REVISIONS: RwLock<Vec<String>> = RwLock::new(vec![]);
+    pub static ref LATEST_REVISION: RwLock<(String, String)> =
+        RwLock::new((String::new(), String::new()));
 }
 
 #[allow(dead_code)]
