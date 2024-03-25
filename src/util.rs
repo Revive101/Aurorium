@@ -1,7 +1,7 @@
 use crate::REVISIONS;
 use axum::headers::UserAgent;
 use chrono::Local;
-use std::{net::SocketAddr, process::ExitCode};
+use std::net::SocketAddr;
 
 pub fn log_access(addr: SocketAddr, header: &UserAgent, route: &str) {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
