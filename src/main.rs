@@ -119,7 +119,7 @@ async fn main() {
 }
 
 async fn check_revision(concurrent_downloads: usize) {
-    let fetched_revision = Revision::check::<256>().await.unwrap();
+    let fetched_revision = Revision::check().await.unwrap();
     if explore_revisions().await.is_err()
         || !REVISIONS
             .read()
