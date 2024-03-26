@@ -66,15 +66,15 @@ impl HttpRequest {
         let save_path = PathBuf::from("files").join(&self.revision);
 
         if let Ok(res) = request_file(&self.list_file_url).await {
-            if !save_path.join("utils").join("LatestFileList.bin").exists() {
-                if let Err(_) = write_to_file(
+            if !save_path.join("utils").join("LatestFileList.bin").exists()
+                && write_to_file(
                     &save_path.join("utils").join("LatestFileList.bin"),
                     &res.bytes().await.unwrap().to_vec(),
                 )
                 .await
-                {
-                    log::error!("Could not save LatestFileList.bin");
-                }
+                .is_err()
+            {
+                log::error!("Could not save LatestFileList.bin");
             }
         } else {
             log::error!("Could not fetch LatestFileList.bin");
@@ -87,15 +87,15 @@ impl HttpRequest {
             Ok(res) => {
                 let xml_text = res.text().await.unwrap_or(String::new());
 
-                if !save_path.join("LatestFileList.xml").exists() {
-                    if let Err(_) = write_to_file(
+                if !save_path.join("LatestFileList.xml").exists()
+                    && write_to_file(
                         &save_path.join("LatestFileList.xml"),
                         &xml_text.as_bytes().to_vec(),
                     )
                     .await
-                    {
-                        log::error!("Could not save LatestFileList.xml");
-                    }
+                    .is_err()
+                {
+                    log::error!("Could not save LatestFileList.xml");
                 }
 
                 let config = Config::new_with_defaults();
