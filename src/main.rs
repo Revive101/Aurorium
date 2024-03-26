@@ -16,6 +16,10 @@ use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use revision_checker::revision_checker::Revision;
 use std::{net::SocketAddr, sync::RwLock, time::Duration};
+use tokio::{
+    join,
+    task::{JoinHandle, JoinSet},
+};
 use util::explore_revisions;
 
 pub mod errors;
@@ -107,45 +111,55 @@ async fn main() {
     let filter = if opts.verbose { "info" } else { "warn" };
     env_logger::init_from_env(env_logger::Env::new().default_filter_or(filter));
 
-    check_revision(opts.concurrent_downloads).await;
-    if opts.rc_interval > 0 {
-        tokio::spawn(async move {
+    // Axum Task
+    let axum = tokio::spawn(async move {
+        log::info!("Axum task started!");
+
+        let state = RateLimiter::new(
+            opts.rl_max_requests,
+            Duration::from_secs(u64::from(opts.rl_reset_duration)),
+            opts.rl_disable,
+        );
+
+        // Initialize all routes
+        let router = Router::new()
+            .route("/patcher/revisions", get(get_revisions))
+            .route("/patcher/:revision/wads/:filename", get(get_wad))
+            .route("/patcher/:revision", get(get_xml_filelist))
+            .route("/patcher/:revision/utils/:filename", get(get_util))
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                rate_limiter_middleware,
+            ))
+            .with_state(state);
+
+        log::info!("Starting server @ {}", &opts.ip);
+        let listener = tokio::net::TcpListener::bind(&opts.ip).await.unwrap();
+        if let Err(why) = axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        {
+            log::error!("Failed to serve axum server!");
+            log::error!("{why}");
+        }
+    });
+
+    // RevisionChecker Task
+    let revision_checker = tokio::spawn(async move {
+        check_revision(opts.concurrent_downloads).await;
+        if opts.rc_interval > 0 {
+            log::info!("RevisionChecker task started!");
+
             loop {
                 tokio::time::sleep(Duration::from_secs(60 * opts.rc_interval)).await;
                 check_revision(opts.concurrent_downloads).await;
             }
-        });
-    }
+        }
+    });
 
-    let state = RateLimiter::new(
-        opts.rl_max_requests,
-        Duration::from_secs(u64::from(opts.rl_reset_duration)),
-        opts.rl_disable,
-    );
-
-    // Initialize all routes
-    let router = Router::new()
-        .route("/patcher/revisions", get(get_revisions))
-        .route("/patcher/:revision/wads/:filename", get(get_wad))
-        .route("/patcher/:revision", get(get_xml_filelist))
-        .route("/patcher/:revision/utils/:filename", get(get_util))
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            rate_limiter_middleware,
-        ))
-        .with_state(state);
-
-    log::info!("Starting server @ {}", &opts.ip);
-    let listener = tokio::net::TcpListener::bind(&opts.ip).await.unwrap();
-    if let Err(why) = axum::serve(
-        listener,
-        router.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await
-    {
-        log::error!("Failed to serve axum server!");
-        log::error!("{why}");
-    }
+    let (_, _) = join!(axum, revision_checker);
 }
 
 async fn check_revision(concurrent_downloads: usize) {
