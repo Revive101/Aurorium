@@ -7,7 +7,7 @@ use axum::{
     body::Body,
     extract::{ConnectInfo, Request, State},
     middleware::{self, Next},
-    response::{IntoResponse, Response},
+    response::Response,
     routing::get,
     Router,
 };
@@ -15,7 +15,7 @@ use bpaf::{construct, long, short, OptionParser, Parser};
 use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use revision_checker::revision_checker::Revision;
-use std::{net::SocketAddr, str::FromStr, sync::RwLock, time::Duration};
+use std::{net::SocketAddr, sync::RwLock, time::Duration};
 use util::explore_revisions;
 
 pub mod errors;
