@@ -15,9 +15,6 @@ pub async fn get_revisions(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
     log_access(addr, &user_agent, "/patcher/revisions");
-    // if !state.lock().unwrap().check_rate_limit(addr) {
-    //     return Err(RATE_LIMIT.into_response());
-    // }
 
     let folders = match REVISIONS.read() {
         Ok(r) => r.clone(),
