@@ -1,16 +1,21 @@
 use crate::{
     http::http_request::HttpRequest,
+    rate_limit::rate_limiter::RateLimiter,
     routes::{get_revisions, get_util, get_wad, get_xml_filelist},
 };
-use axum::{routing::get, Extension, Router};
+use axum::{
+    body::Body,
+    extract::{ConnectInfo, Request, State},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
 use bpaf::{construct, long, short, OptionParser, Parser};
 use lazy_static::lazy_static;
+use reqwest::StatusCode;
 use revision_checker::revision_checker::Revision;
-use std::{
-    net::SocketAddr,
-    sync::{Arc, Mutex, RwLock},
-    time::Duration,
-};
+use std::{net::SocketAddr, str::FromStr, sync::RwLock, time::Duration};
 use util::explore_revisions;
 
 pub mod errors;
@@ -59,7 +64,7 @@ fn opts() -> OptionParser<Opt> {
     let rl_max_requests = long("max_requests").
         help("Change the amount of requests a user can send before getting rate-limited by the server (Default: 100)").
         argument::<u32>("u32").
-        fallback(100);
+        fallback(5);
 
     let rl_reset_duration = long("reset_duration")
         .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds) (Default: 60)")
@@ -79,6 +84,22 @@ fn opts() -> OptionParser<Opt> {
         .descr("This project is not associated with Wizard101rewritten in any way. Any use of this in reference of Wizard101rewritten will not be tolerated.")
 }
 
+async fn rate_limiter_middleware(
+    State(mut state): State<RateLimiter>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    req: Request,
+    next: Next,
+) -> Response {
+    if !state.check_rate_limit(addr) {
+        return Response::builder()
+            .status(StatusCode::TOO_MANY_REQUESTS)
+            .body(Body::new("429 - Too many requests".to_string()))
+            .unwrap();
+    }
+
+    next.run(req).await
+}
+
 #[tokio::main]
 async fn main() {
     let opts = opts().run();
@@ -96,27 +117,34 @@ async fn main() {
         });
     }
 
-    let state = Arc::new(Mutex::new(rate_limit::rate_limiter::RateLimiter::new(
+    let state = RateLimiter::new(
         opts.rl_max_requests,
         Duration::from_secs(u64::from(opts.rl_reset_duration)),
         opts.rl_disable,
-    )));
+    );
 
     // Initialize all routes
-    let app = Router::new()
+    let router = Router::new()
         .route("/patcher/revisions", get(get_revisions))
         .route("/patcher/:revision/wads/:filename", get(get_wad))
         .route("/patcher/:revision", get(get_xml_filelist))
         .route("/patcher/:revision/utils/:filename", get(get_util))
-        .layer(Extension(state));
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            rate_limiter_middleware,
+        ))
+        .with_state(state);
 
-    log::info!("Starting HTTP server @ {}", &opts.ip);
-    match axum::Server::bind(&opts.ip)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .await
+    log::info!("Starting server @ {}", &opts.ip);
+    let listener = tokio::net::TcpListener::bind(&opts.ip).await.unwrap();
+    if let Err(why) = axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
     {
-        Ok(_) => (),
-        Err(why) => log::error!("Could not start Axum server! {}", why),
+        log::error!("Failed to serve axum server!");
+        log::error!("{why}");
     }
 }
 

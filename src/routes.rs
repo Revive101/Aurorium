@@ -1,30 +1,23 @@
+use crate::{util::log_access, REVISIONS};
 use axum::{
-    body::StreamBody,
+    body::Body,
     extract::{ConnectInfo, Path},
-    headers::UserAgent,
     response::{AppendHeaders, IntoResponse},
-    Extension, TypedHeader,
 };
+use axum_extra::{headers::UserAgent, TypedHeader};
 use reqwest::{header, StatusCode};
 use serde_json::json;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 use tokio_util::io::ReaderStream;
-
-use crate::rate_limit::rate_limiter::RateLimiter;
-use crate::{util::log_access, REVISIONS};
-
-const RATE_LIMIT: (StatusCode, &str) = (StatusCode::TOO_MANY_REQUESTS, "429 - Too many requests");
 
 pub async fn get_revisions(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Extension(state): Extension<Arc<Mutex<RateLimiter>>>,
 ) -> impl IntoResponse {
     log_access(addr, &user_agent, "/patcher/revisions");
-    if !state.lock().unwrap().check_rate_limit(addr) {
-        return Err(RATE_LIMIT.into_response());
-    }
+    // if !state.lock().unwrap().check_rate_limit(addr) {
+    //     return Err(RATE_LIMIT.into_response());
+    // }
 
     let folders = match REVISIONS.read() {
         Ok(r) => r.clone(),
@@ -47,19 +40,14 @@ pub async fn get_wad(
     Path((revision, filename)): Path<(String, String)>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Extension(state): Extension<Arc<Mutex<RateLimiter>>>,
 ) -> impl IntoResponse {
     log_access(
         addr,
         &user_agent,
         &format!("/patcher/{revision}/wad/{filename}"),
     );
-    if !state.lock().unwrap().check_rate_limit(addr) {
-        return Err(RATE_LIMIT.into_response());
-    }
 
     let path = format!("files/{revision}/wads/{filename}");
-
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
@@ -75,7 +63,7 @@ pub async fn get_wad(
         .to_string();
 
     let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
+    let body = Body::from_stream(stream);
 
     let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
@@ -91,15 +79,10 @@ pub async fn get_xml_filelist(
     Path(revision): Path<String>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Extension(state): Extension<Arc<Mutex<RateLimiter>>>,
 ) -> impl IntoResponse {
     log_access(addr, &user_agent, &format!("/patcher/{revision}"));
-    if !state.lock().unwrap().check_rate_limit(addr) {
-        return Err(RATE_LIMIT.into_response());
-    }
 
     let path = format!("files/{revision}/LatestFileList.xml");
-
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
@@ -115,7 +98,7 @@ pub async fn get_xml_filelist(
         .to_string();
 
     let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
+    let body = Body::from_stream(stream);
 
     let headers = AppendHeaders([
         (header::CONTENT_TYPE, "text/xml; charset=utf-8"),
@@ -133,19 +116,14 @@ pub async fn get_util(
     Path((revision, filename)): Path<(String, String)>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Extension(state): Extension<Arc<Mutex<RateLimiter>>>,
 ) -> impl IntoResponse {
     log_access(
         addr,
         &user_agent,
         &format!("/patcher/{revision}/utils/{filename}"),
     );
-    if !state.lock().unwrap().check_rate_limit(addr) {
-        return Err(RATE_LIMIT.into_response());
-    }
 
     let path = format!("files/{revision}/utils/{filename}");
-
     let file = match tokio::fs::File::open(path).await {
         Ok(file) => file,
         Err(err) => {
@@ -161,7 +139,7 @@ pub async fn get_util(
         .to_string();
 
     let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
+    let body = Body::from_stream(stream);
 
     let header_content = format!("attachment; filename=\"{filename}\"");
     let headers = AppendHeaders([
