@@ -74,7 +74,7 @@ fn opts() -> OptionParser<Opt> {
     let rl_disable = long("disable_ratelimit").help("Disable ratelimit").switch();
 
     let rc_interval = long("revision_check_interval")
-        .help("Change the interval for checking for new revisions (In minutes)  (Default: 0)")
+        .help("Change the interval for checking for new revisions (In minutes)  (Default: 0 = disabled)")
         .argument::<u64>("u64")
         .fallback(0);
 
