@@ -64,7 +64,7 @@ fn opts() -> OptionParser<Opt> {
     let rl_max_requests = long("max_requests").
         help("Change the amount of requests a user can send before getting rate-limited by the server (Default: 100)").
         argument::<u32>("u32").
-        fallback(5);
+        fallback(100);
 
     let rl_reset_duration = long("reset_duration")
         .help("Change the duration for the interval in which the rate-limit list get's cleared (In seconds) (Default: 60)")
