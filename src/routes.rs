@@ -45,10 +45,10 @@ pub async fn get_wad(
     );
 
     let path = format!("files/{revision}/wads/{filename}");
-    let file = match tokio::fs::File::open(path).await {
+    let file = match tokio::fs::File::open(path.clone()).await {
         Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
+        Err(_) => {
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {path}")).into_response())
         }
     };
 
@@ -80,10 +80,10 @@ pub async fn get_xml_filelist(
     log_access(addr, &user_agent, &format!("/patcher/{revision}"));
 
     let path = format!("files/{revision}/LatestFileList.xml");
-    let file = match tokio::fs::File::open(path).await {
+    let file = match tokio::fs::File::open(path.clone()).await {
         Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
+        Err(_) => {
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {path}")).into_response())
         }
     };
 
@@ -121,10 +121,10 @@ pub async fn get_util(
     );
 
     let path = format!("files/{revision}/utils/{filename}");
-    let file = match tokio::fs::File::open(path).await {
+    let file = match tokio::fs::File::open(path.clone()).await {
         Ok(file) => file,
-        Err(err) => {
-            return Err((StatusCode::NOT_FOUND, format!("File not found: {err}")).into_response())
+        Err(_) => {
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {path}")).into_response())
         }
     };
 
