@@ -1,12 +1,12 @@
 [package]
 name = "aurorium"
 authors = ["Phill030"]
-version = "2.0.1"
+version = "2.1.1"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.6.20", features = ["headers"] }
-# axum-extra = { version = "0.9.0", features = ["typed-header"] } # SOON
+axum = "0.7.5"
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
 bpaf = "0.9.11"
 chrono = "0.4.35"
 console = "0.15.8"
@@ -18,10 +18,10 @@ log = "0.4.21"
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 quickxml_to_serde = { version = "0.6.0", features = ["json_types"] }
 regex = "1.10.4"
-reqwest = "0.11.27"
+reqwest = "0.12.2"
 rayon = "1.10.0"
 serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
+serde_json = "1.0.115"
 strum_macros = "0.26.2"
 strum = "0.26.2"
 thiserror = "1.0.52"
