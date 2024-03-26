@@ -40,7 +40,7 @@ impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
     }
 }
 
-const URL: &str = "patch.us.wizard101.coms";
+const URL: &str = "patch.us.wizard101.com";
 const PORT: &str = "12500";
 const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
 const SESSION_ACCEPT: &str =
