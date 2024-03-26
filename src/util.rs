@@ -1,5 +1,5 @@
 use crate::REVISIONS;
-use axum::headers::UserAgent;
+use axum_extra::headers::UserAgent;
 use chrono::Local;
 use std::net::SocketAddr;
 
@@ -36,19 +36,17 @@ pub enum Endianness {
 }
 
 pub fn hex_decode(hex_string: &str, endianness: &Endianness) -> Option<Vec<u8>> {
-    // Check if the hex string is a valid length
     if hex_string.len() % 2 != 0 {
         return None;
     }
 
-    // Iterate over pairs of characters and convert them to u8
     let bytes: Option<Vec<u8>> = (0..hex_string.len())
         .step_by(2)
         .map(|i| {
             let byte = u8::from_str_radix(&hex_string[i..i + 2], 16).ok()?;
             match endianness {
                 Endianness::Little => Some(byte),
-                Endianness::Big => Some(byte.reverse_bits()), // For Big Endian, reverse the bits
+                Endianness::Big => Some(byte.reverse_bits()),
             }
         })
         .collect();

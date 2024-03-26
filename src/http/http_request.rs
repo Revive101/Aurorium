@@ -47,7 +47,7 @@ impl HttpRequest {
             LOOKING_GLASS
         );
 
-        HttpRequest {
+        Self {
             revision: revision.revision,
             url_prefix: revision.url_prefix,
             list_file_url: revision.list_file_url,
@@ -66,15 +66,15 @@ impl HttpRequest {
         let save_path = PathBuf::from("files").join(&self.revision);
 
         if let Ok(res) = request_file(&self.list_file_url).await {
-            if !save_path.join("utils").join("LatestFileList.bin").exists() {
-                if let Err(_) = write_to_file(
+            if !save_path.join("utils").join("LatestFileList.bin").exists()
+                && write_to_file(
                     &save_path.join("utils").join("LatestFileList.bin"),
                     &res.bytes().await.unwrap().to_vec(),
                 )
                 .await
-                {
-                    log::error!("Could not save LatestFileList.bin");
-                }
+                .is_err()
+            {
+                log::error!("Could not save LatestFileList.bin");
             }
         } else {
             log::error!("Could not fetch LatestFileList.bin");
@@ -87,15 +87,15 @@ impl HttpRequest {
             Ok(res) => {
                 let xml_text = res.text().await.unwrap_or(String::new());
 
-                if !save_path.join("LatestFileList.xml").exists() {
-                    if let Err(_) = write_to_file(
+                if !save_path.join("LatestFileList.xml").exists()
+                    && write_to_file(
                         &save_path.join("LatestFileList.xml"),
                         &xml_text.as_bytes().to_vec(),
                     )
                     .await
-                    {
-                        log::error!("Could not save LatestFileList.xml");
-                    }
+                    .is_err()
+                {
+                    log::error!("Could not save LatestFileList.xml");
                 }
 
                 let config = Config::new_with_defaults();
@@ -170,7 +170,7 @@ impl HttpRequest {
                     });
 
                 println!(
-                    "{} {}Inserted {} wad files & {} util files into list...",
+                    "{} {}Inserted {} wads & {} util files into list...",
                     style("[3/6]").bold().dim(),
                     LINK,
                     &self.files.wad_list.len(),
@@ -274,7 +274,10 @@ impl HttpRequest {
     }
 }
 
-async fn request_file<T: AsRef<str>>(url: T) -> Result<reqwest::Response, reqwest::Error> {
+async fn request_file<T>(url: T) -> Result<reqwest::Response, reqwest::Error>
+where
+    T: AsRef<str>,
+{
     let client = reqwest::Client::new();
     let res = client
         .get(url.as_ref())
