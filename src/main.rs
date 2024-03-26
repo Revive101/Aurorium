@@ -16,10 +16,7 @@ use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use revision_checker::revision_checker::Revision;
 use std::{net::SocketAddr, sync::RwLock, time::Duration};
-use tokio::{
-    join,
-    task::{JoinHandle, JoinSet},
-};
+use tokio::join;
 use util::explore_revisions;
 
 pub mod errors;
