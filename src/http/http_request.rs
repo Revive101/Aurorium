@@ -4,6 +4,7 @@ use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -197,12 +198,8 @@ impl HttpRequest {
                 if !path.exists() {
                     match request_file(format!("{}/{}", &url_cloned, &wad.filename)).await {
                         Ok(res) => {
-                            if let Ok(bytes) = res.bytes().await {
-                                write_to_file(&path, &bytes.to_vec()).await.unwrap();
-                                log::info!("[✔] Fetched {}", wad.filename);
-                            } else {
-                                log::warn!("[❌] Could not convert response to bytes");
-                            }
+                            write_to_file_chunked(&path, res).await.unwrap();
+                            log::info!("[✔] Fetched {}", wad.filename);
                         }
                         Err(why) => {
                             log::warn!("[❌] Could not fetch {}, {}", wad.filename, why);
@@ -242,14 +239,7 @@ impl HttpRequest {
                 if !path.exists() {
                     match request_file(format!("{}/{}", &url_cloned, &util.filename)).await {
                         Ok(res) => {
-                            let bytes = res
-                                .bytes()
-                                .await
-                                .expect("Could not convert to bytes!")
-                                .to_vec();
-
-                            write_to_file(&path, &bytes).await.unwrap();
-
+                            write_to_file_chunked(&path, res).await.unwrap();
                             log::info!("[✔] Fetched {}", util.filename);
                         }
                         Err(why) => {
@@ -290,6 +280,20 @@ async fn write_to_file(path: &PathBuf, content: &Vec<u8>) -> std::io::Result<()>
     tokio::fs::create_dir_all(&path.parent().unwrap()).await?;
     tokio::fs::File::create(&path).await?;
     tokio::fs::write(&path, content).await?;
+
+    Ok(())
+}
+
+async fn write_to_file_chunked(
+    path: &PathBuf,
+    mut response: reqwest::Response,
+) -> std::io::Result<()> {
+    tokio::fs::create_dir_all(&path.parent().unwrap()).await?;
+    let mut file = tokio::fs::File::create(&path).await?;
+
+    while let Some(chunk) = response.chunk().await.unwrap() {
+        file.write_all(&chunk).await?;
+    }
 
     Ok(())
 }
