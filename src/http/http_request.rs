@@ -4,7 +4,7 @@ use futures::StreamExt;
 use quickxml_to_serde::Config;
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
-use tokio::{fs::OpenOptions, io::AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
