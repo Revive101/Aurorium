@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use revision_checker::revision_checker::Revision;
 use std::{net::SocketAddr, sync::RwLock, time::Duration};
-use tokio::join;
+use tokio::{join, net::TcpListener};
 use util::explore_revisions;
 
 pub mod errors;
@@ -28,8 +28,6 @@ mod util;
 
 lazy_static! {
     pub static ref REVISIONS: RwLock<Vec<String>> = RwLock::new(vec![]);
-    pub static ref LATEST_REVISION: RwLock<(String, String)> =
-        RwLock::new((String::new(), String::new()));
 }
 
 #[allow(dead_code)]
@@ -131,7 +129,7 @@ async fn main() {
             .with_state(state);
 
         log::info!("Starting server @ {}", &opts.ip);
-        let listener = tokio::net::TcpListener::bind(&opts.ip).await.unwrap();
+        let listener = TcpListener::bind(&opts.ip).await.unwrap();
         if let Err(why) = axum::serve(
             listener,
             router.into_make_service_with_connect_info::<SocketAddr>(),
