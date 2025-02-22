@@ -58,14 +58,20 @@ The structure of a revision looks like following: `V_r[Major].[Minor]`. Sometime
 You can provide the (built) executable with following parameters:
 
 ```
--v, --verbose               Activate verbosity (Default: warn)
--i, --ip=<SocketAddr>       Override the default endpoint IP (Default: 0.0.0.0:12369)
--c, --concurrent_downloads=<usize>  Override the count of concurrent downloads at once (Default: 8)
-    --max_requests=<u32>    Change the amount of requests a user can send before getting rate-limited by the server
-    --reset_duration=<u32>  Change the duration for the interval in which the rate-limit list get's cleared (In seconds)
-    --disable_ratelimit     Disable ratelimits
-    --revision_check_interval=<u64>  Change the interval for checking for new revisions (In minutes)
--h, --help                  Prints help information
+  -v, --verbose
+          Activate verbosity (Default: false)
+  -e, --endpoint <ENDPOINT>
+          Socket address to listen [default: 127.0.0.1:12369]
+  -c, --concurrent-downloads <CONCURRENT_DOWNLOADS>
+          Max number of concurrent downloads while fetching [default: 16]
+  -f, --fetch-interval <FETCH_INTERVAL>
+          Interval in minutes to check for a new revision [default: 0]
+  -m, --max-requests <MAX_REQUESTS>
+          Max requests in the RateLimiter until connections getting blocked by the system [default: 100]
+  -r, --reset-interval <RESET_INTERVAL>
+          Interval in seconds in the RateLimiter for when to clear the RateLimit list [default: 60]
+  -t, --timeout <TIMEOUT>
+          Lets each connection timeout after x seconds of no response [default: 10]
 ```
 
 ## Contributing
@@ -77,7 +83,7 @@ Fork the repository, make your changes, and submit a pull request.
 Report bugs or suggest new features by opening [issues](https://github.com/Revive101/Aurorium/issues).
 
 > [!NOTE]
-> 
+>
 > If you've contributed to one of our projects you can receive the `@Contributor` role in our [discord](https://discord.gg/sMFgyNRDDM). _You must have linked GitHub to your Discord in order for us to give you the role_
 
 ## Community
