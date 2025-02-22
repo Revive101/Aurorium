@@ -1,1 +1,2 @@
-pub mod revision_checker;
+pub mod checker;
+pub mod revision;
