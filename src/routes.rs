@@ -1,19 +1,39 @@
-use crate::{util::log_access, REVISIONS};
+use crate::{REVISIONS, util::log_access};
 use axum::{
     body::Body,
-    extract::{ConnectInfo, Path},
+    extract::{FromRequestParts, Path},
+    http::request::Parts,
     response::{AppendHeaders, IntoResponse},
 };
-use axum_extra::{headers::UserAgent, TypedHeader};
-use reqwest::{header, StatusCode};
+use axum_extra::{TypedHeader, headers::UserAgent};
+use reqwest::{StatusCode, header};
 use serde_json::json;
-use std::{convert::Infallible, net::SocketAddr, path::PathBuf};
+use std::{convert::Infallible, path::PathBuf};
 use tokio_util::io::ReaderStream;
+
+#[derive(Debug)]
+pub struct XForwardedFor(pub String);
+
+impl<S> FromRequestParts<S> for XForwardedFor
+where
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> std::result::Result<Self, Self::Rejection> {
+        parts
+            .headers
+            .get("X-Forwarded-For")
+            .and_then(|value| value.to_str().ok())
+            .map(|s| XForwardedFor(s.to_string()))
+            .ok_or(StatusCode::UNAUTHORIZED)
+    }
+}
 
 pub async fn get_file(
     Path((revision, file_path)): Path<(String, String)>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    XForwardedFor(addr): XForwardedFor,
 ) -> impl IntoResponse {
     log_access(addr, &user_agent, &format!("/files/{revision}/{file_path}"));
 
@@ -40,7 +60,7 @@ pub async fn get_file(
 
 pub async fn get_revisions(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    XForwardedFor(addr): XForwardedFor,
 ) -> Result<impl IntoResponse, Infallible> {
     log_access(addr, &user_agent, "/revisions");
 

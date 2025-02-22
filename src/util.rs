@@ -1,9 +1,7 @@
-use std::net::SocketAddr;
-
 use axum_extra::headers::UserAgent;
 use chrono::Local;
 
-pub fn log_access(addr: SocketAddr, header: &UserAgent, route: &str) {
+pub fn log_access(addr: String, header: &UserAgent, route: &str) {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
     let eu_time = Local::now().format("%T (%d.%m.%Y)");
 
