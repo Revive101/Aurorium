@@ -2,11 +2,11 @@
 
 use super::structs::{Element, LatestFiles, RecordUnion};
 use crate::revision_checker::revision::Revision;
-use futures::{stream, StreamExt};
+use futures::{StreamExt, stream};
 use reqwest::Client;
 use std::{collections::VecDeque, io, path::PathBuf, process::exit};
 use tokio::{
-    fs::{create_dir_all, write, File},
+    fs::{File, create_dir_all, write},
     io::AsyncWriteExt,
 };
 
@@ -80,13 +80,14 @@ impl AssetFetcher {
             async move {
                 if !path.exists() {
                     match Self::request_file(&url).await {
-                        Ok(res) => {
-                            if let Err(e) = Self::write_to_file_chunked(&path, res).await {
+                        Ok(res) => match Self::write_to_file_chunked(&path, res).await {
+                            Err(e) => {
                                 log::warn!("[❌] Could not fetch {}: {}", file.filename, e);
-                            } else {
+                            }
+                            _ => {
                                 log::info!("[✔] Fetched {}", file.filename);
                             }
-                        }
+                        },
                         Err(e) => log::warn!("[❌] Could not fetch {}: {}", file.filename, e),
                     };
                 } else {

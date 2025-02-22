@@ -1,4 +1,4 @@
-use crate::{fetcher::fetcher::AssetFetcher, REVISIONS};
+use crate::{REVISIONS, fetcher::fetcher::AssetFetcher};
 
 use super::revision::Revision;
 use std::env::current_dir;
