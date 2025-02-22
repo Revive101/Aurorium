@@ -1,6 +1,4 @@
-use axum::{
-    BoxError, Router, error_handling::HandleErrorLayer, response::IntoResponse, routing::get,
-};
+use axum::{BoxError, Router, error_handling::HandleErrorLayer, response::IntoResponse, routing::get};
 use clap::Parser;
 use lazy_static::lazy_static;
 use reqwest::StatusCode;
@@ -31,6 +29,7 @@ lazy_static! {
 #[command(version = "2.0")]
 struct Arguments {
     #[arg(short, long, default_value_t = false)]
+    // Enable verbose logging
     verbose: bool,
 
     #[arg(short, long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 12369))]
@@ -67,34 +66,24 @@ async fn main() {
 
     let axum_task = spawn(async move {
         let router = Router::new()
-            .route("/:revision/*file_path", get(get_file))
+            .route("/{revision}/{*file_path}", get(get_file))
             .route("/revisions", get(get_revisions))
             .layer(
                 ServiceBuilder::new()
                     .layer(HandleErrorLayer::new(handle_error))
                     .layer(BufferLayer::new(1024))
-                    .layer(RateLimitLayer::new(
-                        cli.max_requests,
-                        Duration::from_secs(cli.reset_interval),
-                    ))
+                    .layer(RateLimitLayer::new(cli.max_requests, Duration::from_secs(cli.reset_interval)))
                     .layer(TimeoutLayer::new(Duration::from_secs(cli.timeout))),
             );
 
         let listener = TcpListener::bind(&cli.endpoint).await.unwrap();
-        if let Err(why) = axum::serve(
-            listener,
-            router.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .await
-        {
+        if let Err(why) = axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>()).await {
             log::error!("Failed to serve axum server: {why}");
             exit(1);
         }
     });
 
-    let mut checker = RevisionChecker::new(cli.concurrent_downloads)
-        .await
-        .unwrap();
+    let mut checker = RevisionChecker::new(cli.concurrent_downloads).await.unwrap();
     let revision_task = tokio::spawn(async move {
         if cli.fetch_interval > 0 {
             loop {
@@ -108,8 +97,5 @@ async fn main() {
 }
 
 async fn handle_error(error: BoxError) -> impl IntoResponse {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Unhandled error: {}", error),
-    )
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("Unhandled error: {}", error))
 }
