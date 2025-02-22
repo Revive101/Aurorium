@@ -1,7 +1,7 @@
-use crate::REVISIONS;
+use std::net::SocketAddr;
+
 use axum_extra::headers::UserAgent;
 use chrono::Local;
-use std::net::SocketAddr;
 
 pub fn log_access(addr: SocketAddr, header: &UserAgent, route: &str) {
     const REQUIRED_USER_AGENT: &str = "KingsIsle Patcher";
@@ -12,22 +12,6 @@ pub fn log_access(addr: SocketAddr, header: &UserAgent, route: &str) {
     } else {
         log::info!("[UNAUTHORIZED] {addr} connected to {route} @ {eu_time}");
     }
-}
-
-pub async fn explore_revisions() -> std::io::Result<()> {
-    let mut dir = tokio::fs::read_dir(std::env::current_dir().unwrap().join("files")).await?;
-
-    let mut revisions_vec: Vec<String> = Vec::new();
-    while let Some(entry) = &dir.next_entry().await? {
-        if entry.file_type().await?.is_dir() {
-            revisions_vec.push(entry.file_name().to_string_lossy().to_string());
-        }
-    }
-
-    let mut revisions = REVISIONS.write().unwrap();
-    *revisions = revisions_vec;
-
-    Ok(())
 }
 
 pub enum Endianness {
