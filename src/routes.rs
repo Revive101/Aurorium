@@ -1,39 +1,45 @@
 use crate::{REVISIONS, util::log_access};
 use axum::{
     body::Body,
-    extract::{FromRequestParts, Path},
+    extract::{ConnectInfo, FromRequestParts, Path},
     http::request::Parts,
     response::{AppendHeaders, IntoResponse},
 };
 use axum_extra::{TypedHeader, headers::UserAgent};
 use reqwest::{StatusCode, header};
 use serde_json::json;
-use std::{convert::Infallible, path::PathBuf};
+use std::{convert::Infallible, net::SocketAddr, path::PathBuf};
 use tokio_util::io::ReaderStream;
 
 #[derive(Debug)]
-pub struct XForwardedFor(pub String);
+pub struct ConnectionAddr(pub String);
 
-impl<S> FromRequestParts<S> for XForwardedFor
+impl<S> FromRequestParts<S> for ConnectionAddr
 where
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> std::result::Result<Self, Self::Rejection> {
-        parts
-            .headers
-            .get("X-Forwarded-For")
-            .and_then(|value| value.to_str().ok())
-            .map(|s| XForwardedFor(s.to_string()))
-            .ok_or(StatusCode::UNAUTHORIZED)
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        // First try to get X-Forwarded-For header
+        if let Some(forwarded_for) = parts.headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()) {
+            return Ok(ConnectionAddr(forwarded_for.to_string()));
+        }
+
+        // If header not found, fall back to connection info
+        let connection_info = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        Ok(ConnectionAddr(connection_info.0.ip().to_string()))
     }
 }
 
 pub async fn get_file(
     Path((revision, file_path)): Path<(String, String)>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    XForwardedFor(addr): XForwardedFor,
+    ConnectionAddr(addr): ConnectionAddr,
 ) -> impl IntoResponse {
     log_access(addr, &user_agent, &format!("/files/{revision}/{file_path}"));
 
@@ -60,7 +66,7 @@ pub async fn get_file(
 
 pub async fn get_revisions(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    XForwardedFor(addr): XForwardedFor,
+    ConnectionAddr(addr): ConnectionAddr,
 ) -> Result<impl IntoResponse, Infallible> {
     log_access(addr, &user_agent, "/revisions");
 
