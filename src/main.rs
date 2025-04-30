@@ -1,12 +1,12 @@
-use axum::{Router, extract::Path, response::IntoResponse, routing::get};
+use axum::{extract::Path, response::IntoResponse};
 use clap::Parser;
 use extract::ConnectionAddr;
 use revision::{Revision, fetcher::AssetFetcher};
 use std::{
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    net::{Ipv4Addr, SocketAddrV4},
     num::NonZero,
+    path::PathBuf,
 };
-use tokio::{net::TcpListener, spawn};
 
 pub mod errors;
 pub mod extract;
@@ -25,7 +25,10 @@ async fn main() {
     let args = Args::parse();
 
     let revision = Revision::check().await.unwrap();
-    AssetFetcher::new(revision, NonZero::new(1).unwrap()).fetch_index().await;
+    AssetFetcher::new(revision, NonZero::new(1).unwrap(), PathBuf::from("data"))
+        .fetch_index()
+        .await
+        .unwrap(); // TODO: remove unwrap
 
     // let file_serving = spawn(async move {
     //     let router = Router::new()
