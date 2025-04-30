@@ -1,25 +1,27 @@
-use super::Revision;
+use super::{Revision, xml_parser::parse_xml};
 use crate::errors::AssetFetcherError;
+use futures_util::{
+    StreamExt,
+    stream::{self},
+};
 use reqwest::Client;
 use roxmltree::{Document, Node};
-use std::{
-    num::NonZeroUsize,
-    path::{Path, PathBuf},
-};
+use std::{num::NonZeroUsize, path::PathBuf};
 use tokio::{
     fs::{File, create_dir_all, write},
     io::AsyncWriteExt,
 };
 
 /// Represents a single WAD file with its metadata
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Asset {
     pub filename: String,
-    pub size: i64,
-    pub header_size: i64,
-    pub compressed_header_size: i64,
-    pub crc: i64,
-    pub header_crc: i64,
+    pub file_type: String,
+    pub size: u64,
+    pub header_size: u64,
+    pub compressed_header_size: u64,
+    pub crc: u64,
+    pub header_crc: u64,
 }
 
 /// Categorizes different types of game assets
@@ -40,8 +42,8 @@ pub struct AssetFetcher {
 }
 
 impl AssetFetcher {
-    pub fn new(revision: Revision, concurrent_downloads: NonZeroUsize) -> Self {
-        let save_directory = Path::new("files").join(&revision.revision);
+    pub fn new(revision: Revision, concurrent_downloads: NonZeroUsize, save_directory_name: PathBuf) -> Self {
+        let save_directory = save_directory_name.join(&revision.revision);
 
         Self {
             assets: AssetList::default(),
@@ -62,26 +64,50 @@ impl AssetFetcher {
         let xml_url = self.list_file_url.replace("LatestFileList.bin", "LatestFileList.xml");
         let xml_path = self.save_directory.join("LatestFileList.xml");
 
-        self.fetch_and_parse_xml(&xml_url, &xml_path).await?;
+        match self.fetch_and_parse_xml(&xml_url, &xml_path).await {
+            Ok(_) => {
+                self.fetch_files(&self.assets.wads, &self.save_directory).await;
+                self.fetch_files(&self.assets.utils, &self.save_directory).await;
+            }
+            Err(e) => {
+                println!("Failed to parse XML: {e}");
+            }
+        }
 
         Ok(())
     }
 
-    // This function starts `n` parallel tasks to fetch multiple files
-    async fn fetch_files() {}
-
     //
     async fn fetch_and_parse_xml(&mut self, url: &str, save_path: &PathBuf) -> Result<(), AssetFetcherError> {
-        let response = Self::request_file(url).await?;
+        let response = Self::send_request(url).await?;
         let xml_text = response.text().await.unwrap_or_default();
 
-        if !save_path.exists() {
-            let sanitized_content = self.sanitize_content(&xml_text).await?;
+        let sanitized_content = self.sanitize_content(&xml_text).await?;
+        self.propogate_file_list(&sanitized_content);
 
-            Self::write_to_file(&save_path, sanitized_content.as_bytes()).await?;
+        if !save_path.exists() {
+            Self::write_to_file(&save_path, &sanitized_content.into_bytes()).await?;
         }
 
         Ok(())
+    }
+
+    fn propogate_file_list(&mut self, xml_text: &str) {
+        let records = parse_xml(xml_text).unwrap();
+
+        let mut wads = Vec::new();
+        let mut utils = Vec::new();
+
+        for file in records {
+            if file.filename.ends_with(".wad") {
+                wads.push(file);
+            } else {
+                utils.push(file);
+            }
+        }
+
+        self.assets.wads = std::mem::take(&mut wads);
+        self.assets.utils = std::mem::take(&mut utils);
     }
 
     // ts looks so ugly like fr 🥀🥀
@@ -124,8 +150,34 @@ impl AssetFetcher {
         s.push_str(&format!("</{}>", node.tag_name().name()));
         s
     }
-
     //////////////////////////////////////
+
+    // This function starts `n` parallel tasks to fetch multiple files
+    async fn fetch_files(&self, file_list: &Vec<Asset>, base_path: &PathBuf) {
+        stream::iter(file_list.iter().map(|file| {
+            let url = format!("{}/{}", self.url_prefix, file.filename);
+            let path = base_path.join(&file.filename);
+
+            async move {
+                if !path.exists() {
+                    match Self::send_request(&url).await {
+                        Ok(res) => match Self::write_to_file_chunked(&path, res).await {
+                            Err(e) => println!("[❌] Could not fetch {}: {e}", file.filename),
+                            _ => {
+                                println!("[✔] Fetched {}", file.filename);
+                            }
+                        },
+                        Err(e) => println!("[❌] Could not fetch {}: {}", file.filename, e),
+                    }
+                } else {
+                    println!("Skipping {:?}", &file.filename)
+                }
+            }
+        }))
+        .buffer_unordered(self.concurrent_downloads.get())
+        .collect::<Vec<_>>()
+        .await;
+    }
 
     async fn download_and_save(&self, url: &str, path: &PathBuf) -> std::io::Result<()> {
         if path.exists() {
@@ -133,11 +185,11 @@ impl AssetFetcher {
             return Ok(());
         }
 
-        let response = Self::request_file(url).await.unwrap();
+        let response = Self::send_request(url).await.unwrap();
         Self::write_to_file(path, &response.bytes().await.unwrap()).await
     }
 
-    async fn request_file(url: &str) -> Result<reqwest::Response, reqwest::Error> {
+    async fn send_request(url: &str) -> Result<reqwest::Response, reqwest::Error> {
         let client = Client::new();
         client.get(url).header("User-Agent", "KingsIsle Patcher").send().await
     }
