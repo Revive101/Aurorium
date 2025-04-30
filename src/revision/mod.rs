@@ -11,6 +11,7 @@ use tokio::{
 
 pub mod checker;
 pub mod fetcher;
+pub mod xml_parser;
 
 const BUFFER_SIZE: usize = 256;
 const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
