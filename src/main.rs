@@ -1,6 +1,4 @@
-use axum::{extract::Path, response::IntoResponse};
 use clap::Parser;
-use extract::ConnectionAddr;
 use fetcher::client::AssetFetcher;
 use revision::Revision;
 use std::{
@@ -20,13 +18,13 @@ pub mod util;
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
 struct Args {
-    #[arg(short, long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 12369))]
+    #[arg(short, long, env = "ENDPOINT", default_value_t = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 12369))]
     endpoint: SocketAddrV4,
 
-    #[arg(short, long, default_value_t = unsafe { NonZeroUsize::new_unchecked(1) })]
+    #[arg(short, long, env = "CONCURRENT_DOWNLOADS", default_value_t = unsafe { NonZeroUsize::new_unchecked(1) })]
     concurrent_downloads: NonZeroUsize,
 
-    #[arg(short, long, default_value = "data")]
+    #[arg(short, long, env = "SAVE_DIRECTORY", default_value = "data")]
     save_directory: PathBuf,
 }
 
@@ -51,10 +49,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn file(Path((revision, file_path)): Path<(String, String)>, ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
-    ()
-}
+// pub async fn file(Path((revision, file_path)): Path<(String, String)>, ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+//     ()
+// }
 
-pub async fn revisions(Path((revision, file_path)): Path<(String, String)>, ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
-    ()
-}
+// pub async fn revisions(Path((revision, file_path)): Path<(String, String)>, ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+//     ()
+// }
