@@ -1,6 +1,7 @@
 use clap::Parser;
-use fetcher::client::AssetFetcher;
-use revision::Revision;
+use fetcher::compare::compare_revisions;
+use models::revision::LocalRevision;
+use patch_info::PatchInfo;
 use std::{
     error::Error,
     net::{Ipv4Addr, SocketAddrV4},
@@ -9,11 +10,14 @@ use std::{
 };
 
 pub mod errors;
-pub mod extract;
 pub mod fetcher;
 pub mod models;
-pub mod revision;
-pub mod util;
+pub mod patch_info;
+pub mod utils;
+pub mod xml_parser;
+
+const HOST: &str = "patch.us.wizard101.com";
+const PORT: &str = "12500";
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -26,16 +30,30 @@ struct Args {
 
     #[arg(short, long, env = "SAVE_DIRECTORY", default_value = "data")]
     save_directory: PathBuf,
+
+    #[arg(long, env = "HOST", default_value = HOST)]
+    host: String,
+
+    #[arg(long, env = "PORT", default_value = PORT)]
+    port: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let revision = Revision::check().await?;
-    AssetFetcher::new(revision, args.concurrent_downloads, args.save_directory)
-        .fetch_index()
-        .await?;
+    let revision = PatchInfo::fetch_latest(&args.host, &args.port).await?;
+    let new_rev = LocalRevision::new(&revision.revision, &args.save_directory).await.unwrap();
+
+    let old_rev = LocalRevision::from_name("V_r774526.Wizard_1_570", &args.save_directory)
+        .await
+        .unwrap();
+
+    let mut compared = compare_revisions(&new_rev, &Some(old_rev)).unwrap();
+
+    // AssetFetcher::new(revision, args.concurrent_downloads, args.save_directory)
+    // .fetch_index()
+    // .await?;
 
     // let file_serving = spawn(async move {
     //     let router = Router::new()
