@@ -12,13 +12,6 @@ pub struct Asset {
     pub header_crc: u64,
 }
 
-impl Asset {
-    /// Checks if this asset has the same content as another
-    pub fn same_content(&self, other: &Asset) -> bool {
-        self.crc == other.crc && self.size == other.size
-    }
-}
-
 /// Categorizes different types of game assets
 #[derive(Debug, Default)]
 pub struct AssetList {
