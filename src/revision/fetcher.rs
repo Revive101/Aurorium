@@ -80,7 +80,7 @@ impl AssetFetcher {
         let xml_text = response.text().await.unwrap_or_default();
 
         let sanitized_content = self.sanitize_content(&xml_text).await?;
-        self.propogate_file_list(&sanitized_content)?;
+        self.propagate_file_list(&sanitized_content)?;
 
         if !save_path.exists() {
             Self::write_to_file(&save_path, &sanitized_content.into_bytes()).await?;
@@ -89,7 +89,7 @@ impl AssetFetcher {
         Ok(())
     }
 
-    fn propogate_file_list(&mut self, xml_text: &str) -> Result<(), AssetFetcherError> {
+    fn propagate_file_list(&mut self, xml_text: &str) -> Result<(), AssetFetcherError> {
         let records = parse_xml(xml_text)?;
         let (wads, utils) = records.into_iter().partition(|f| f.filename.ends_with(".wad"));
 
