@@ -1,3 +1,5 @@
+use std::{iter::Chain, slice::Iter};
+
 /// Represents a single WAD file with its metadata
 #[derive(Debug, Default)]
 pub struct Asset {
@@ -22,4 +24,11 @@ impl Asset {
 pub struct AssetList {
     pub wads: Vec<Asset>,
     pub utils: Vec<Asset>,
+}
+
+impl AssetList {
+    /// Returns a combined list of all assets
+    pub fn assets(&self) -> Chain<Iter<'_, Asset>, Iter<'_, Asset>> {
+        self.wads.iter().chain(self.utils.iter())
+    }
 }
