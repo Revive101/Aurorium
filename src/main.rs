@@ -1,8 +1,8 @@
 use axum::{extract::Path, response::IntoResponse};
 use clap::Parser;
 use extract::ConnectionAddr;
-use indicatif::{ProgressBar, ProgressStyle};
-use revision::{Revision, fetcher::AssetFetcher};
+use fetcher::client::AssetFetcher;
+use revision::Revision;
 use std::{
     error::Error,
     net::{Ipv4Addr, SocketAddrV4},
@@ -12,10 +12,13 @@ use std::{
 
 pub mod errors;
 pub mod extract;
+pub mod fetcher;
+pub mod models;
 pub mod revision;
 pub mod util;
 
 #[derive(Clone, Parser)]
+#[clap(author, version, about)]
 struct Args {
     #[arg(short, long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 12369))]
     endpoint: SocketAddrV4,

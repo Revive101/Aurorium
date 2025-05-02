@@ -1,5 +1,8 @@
-use super::{Revision, xml_parser::parse_xml};
-use crate::errors::AssetFetcherError;
+use crate::{
+    errors::AssetFetcherError,
+    models::asset::{Asset, AssetList},
+    revision::{Revision, xml_parser::parse_xml},
+};
 use futures_util::{
     StreamExt,
     stream::{self},
@@ -12,25 +15,6 @@ use tokio::{
     fs::{File, create_dir_all, write},
     io::AsyncWriteExt,
 };
-
-/// Represents a single WAD file with its metadata
-#[derive(Debug, Default)]
-pub struct Asset {
-    pub filename: String,
-    pub file_type: String,
-    pub size: u64,
-    pub header_size: u64,
-    pub compressed_header_size: u64,
-    pub crc: u64,
-    pub header_crc: u64,
-}
-
-/// Categorizes different types of game assets
-#[derive(Debug, Default)]
-struct AssetList {
-    pub wads: Vec<Asset>,
-    pub utils: Vec<Asset>,
-}
 
 /// Handles fetching and managing game assets
 pub struct AssetFetcher {

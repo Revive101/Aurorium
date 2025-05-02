@@ -1,8 +1,5 @@
+use crate::{errors::AssetFetcherError, models::asset::Asset};
 use roxmltree::{Document, Node};
-
-use crate::errors::AssetFetcherError;
-
-use super::fetcher::Asset;
 
 pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, AssetFetcherError> {
     let doc = Document::parse(&xml_content)?;

@@ -3,18 +3,12 @@ use crate::{
     util::{Endianness, hex_decode},
 };
 use regex::Regex;
-use std::{
-    fs::File,
-    io::{Cursor, Read, Write},
-    net::ToSocketAddrs,
-};
+use std::{io::Cursor, net::ToSocketAddrs};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
 
-pub mod checker;
-pub mod fetcher;
 pub mod xml_parser;
 
 const BUFFER_SIZE: usize = 256;
