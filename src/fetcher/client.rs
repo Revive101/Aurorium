@@ -131,7 +131,7 @@ impl AssetFetcher {
                     if !path.exists() {
                         match self.client.get(&url).send().await {
                             Ok(res) => match Self::write_to_file_chunked(&path, res).await {
-                                Err(e) => println!("[❌] Could not fetch {}: {e}", file.filename),
+                                Err(e) => println!("[❌] Could not write file {}: {e}", file.filename),
                                 _ => {}
                             },
                             Err(e) => println!("[❌] Could not fetch {}: {}", file.filename, e),
