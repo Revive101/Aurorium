@@ -31,4 +31,17 @@ impl AssetList {
     pub fn assets(&self) -> Chain<Iter<'_, Asset>, Iter<'_, Asset>> {
         self.wads.iter().chain(self.utils.iter())
     }
+
+    /// Compare self vs other, returning the assets that are new or changed.
+    pub fn diff<'a>(&self, other: &'a AssetList) -> Vec<&'a Asset> {
+        let mut changed = Vec::new();
+
+        for new_asset in other.assets() {
+            match self.assets().find(|old| old.filename == new_asset.filename) {
+                Some(old) if old.crc == new_asset.crc && old.size == new_asset.size => { /* unchanged */ }
+                _ => changed.push(new_asset),
+            }
+        }
+        changed
+    }
 }
