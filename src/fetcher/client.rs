@@ -1,7 +1,8 @@
 use crate::{
     errors::AssetFetcherError,
     models::asset::{Asset, AssetList},
-    revision::{Revision, xml_parser::parse_xml},
+    patch_info::PatchInfo,
+    xml_parser::parse_xml,
 };
 use futures_util::{
     StreamExt,
@@ -28,7 +29,7 @@ pub struct AssetFetcher {
 }
 
 impl AssetFetcher {
-    pub fn new(revision: Revision, concurrent_downloads: NonZeroUsize, save_directory_name: PathBuf) -> Self {
+    pub fn new(revision: PatchInfo, concurrent_downloads: NonZeroUsize, save_directory_name: PathBuf) -> Self {
         Self {
             assets: AssetList::default(),
             revision: revision.revision.clone(),
