@@ -1,7 +1,7 @@
 use crate::{errors::AssetFetcherError, models::asset::Asset};
 use roxmltree::{Document, Node};
 
-pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, AssetFetcherError> {
+pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFetcherError> {
     let doc = Document::parse(&xml_content)?;
     let root = doc.root_element();
 
@@ -24,7 +24,9 @@ pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, AssetFetcherError> {
         }
     });
 
-    Ok(records)
+    let (wads, utils) = records.into_iter().partition(|f| f.filename.ends_with(".wad"));
+
+    Ok((wads, utils))
 }
 
 fn extract_record_data(record_node: Node) -> Result<Asset, AssetFetcherError> {

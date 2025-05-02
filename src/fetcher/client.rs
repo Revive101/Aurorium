@@ -62,23 +62,15 @@ impl AssetFetcher {
     async fn process_xml(&mut self, url: &str, save_path: &PathBuf) -> Result<(), AssetFetcherError> {
         let response = self.client.get(url).send().await?;
         let xml_text = response.text().await.unwrap_or_default();
-
         let sanitized_content = self.sanitize_content(&xml_text).await?;
-        self.propagate_file_list(&sanitized_content)?;
+
+        let (wads, utils) = parse_xml(&sanitized_content)?;
+        self.assets.wads = wads;
+        self.assets.utils = utils;
 
         if !save_path.exists() {
             Self::write_to_file(&save_path, &sanitized_content.into_bytes()).await?;
         }
-
-        Ok(())
-    }
-
-    fn propagate_file_list(&mut self, xml_text: &str) -> Result<(), AssetFetcherError> {
-        let records = parse_xml(xml_text)?;
-        let (wads, utils) = records.into_iter().partition(|f| f.filename.ends_with(".wad"));
-
-        self.assets.wads = wads;
-        self.assets.utils = utils;
 
         Ok(())
     }
