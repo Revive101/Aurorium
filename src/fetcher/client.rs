@@ -2,7 +2,7 @@ use crate::{
     errors::AssetFetcherError,
     models::asset::{Asset, AssetList},
     patch_info::PatchInfo,
-    xml_parser::parse_xml,
+    xml_parser::{parse_xml, sanitize_content},
 };
 use futures_util::{
     StreamExt,
@@ -10,7 +10,6 @@ use futures_util::{
 };
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
-use roxmltree::{Document, Node};
 use std::{num::NonZeroUsize, path::PathBuf};
 use tokio::{
     fs::{File, create_dir_all, write},
@@ -65,7 +64,7 @@ impl AssetFetcher {
 
         let response = self.client.get(url).send().await?;
         let xml_text = response.text().await.unwrap_or_default();
-        let sanitized_content = self.sanitize_content(&xml_text).await?;
+        let sanitized_content = sanitize_content(&xml_text).await?;
 
         let (wads, utils) = parse_xml(&sanitized_content)?;
         self.assets.wads = wads;
@@ -77,45 +76,6 @@ impl AssetFetcher {
 
         Ok(())
     }
-
-    // ts looks so ugly like fr 🥀🥀
-    ///////////////////////////////////////
-    async fn sanitize_content(&mut self, text: &str) -> Result<String, AssetFetcherError> {
-        println!("Sanitizing XML...");
-
-        let doc = Document::parse(text)?;
-        let root = doc.root_element();
-
-        let mut output = String::new();
-        output.push_str("<?xml version=\"1.0\" ?>\n<LatestFileList>\n");
-
-        for child in root.children() {
-            if child.is_element() && !matches!(child.tag_name().name(), "_TableList" | "About") {
-                output.push_str(&Self::node_to_string(child));
-                output.push('\n');
-            }
-        }
-
-        output.push_str("</LatestFileList>");
-        Ok(output)
-    }
-
-    fn node_to_string(node: Node) -> String {
-        let mut s = String::new();
-        s.push_str(&format!("<{}>", node.tag_name().name()));
-
-        for child in node.children() {
-            match () {
-                _ if child.is_element() => s.push_str(&Self::node_to_string(child)),
-                _ if child.is_text() => s.push_str(child.text().unwrap_or("")),
-                _ => (),
-            }
-        }
-
-        s.push_str(&format!("</{}>", node.tag_name().name()));
-        s
-    }
-    //////////////////////////////////////
 
     // This function starts `n` parallel tasks to fetch multiple files
     async fn fetch_files(&self, file_list: &Vec<Asset>, base_path: &PathBuf) {

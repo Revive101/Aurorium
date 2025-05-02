@@ -52,3 +52,42 @@ fn extract_record_data(record_node: Node) -> Result<Asset, AssetFetcherError> {
 
     Ok(asset)
 }
+
+// ts looks so ugly like fr 🥀🥀
+///////////////////////////////////////
+pub async fn sanitize_content(text: &str) -> Result<String, AssetFetcherError> {
+    println!("Sanitizing XML...");
+
+    let doc = Document::parse(text)?;
+    let root = doc.root_element();
+
+    let mut output = String::new();
+    output.push_str("<?xml version=\"1.0\" ?>\n<LatestFileList>\n");
+
+    for child in root.children() {
+        if child.is_element() && !matches!(child.tag_name().name(), "_TableList" | "About") {
+            output.push_str(&node_to_string(child));
+            output.push('\n');
+        }
+    }
+
+    output.push_str("</LatestFileList>");
+    Ok(output)
+}
+
+fn node_to_string(node: Node) -> String {
+    let mut s = String::new();
+    s.push_str(&format!("<{}>", node.tag_name().name()));
+
+    for child in node.children() {
+        match () {
+            _ if child.is_element() => s.push_str(&node_to_string(child)),
+            _ if child.is_text() => s.push_str(child.text().unwrap_or("")),
+            _ => (),
+        }
+    }
+
+    s.push_str(&format!("</{}>", node.tag_name().name()));
+    s
+}
+//////////////////////////////////////
