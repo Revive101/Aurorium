@@ -60,6 +60,8 @@ impl AssetFetcher {
     }
 
     async fn process_xml(&mut self, url: &str, save_path: &PathBuf) -> Result<(), AssetFetcherError> {
+        println!("Processing LatestFileList.xml...");
+
         let response = self.client.get(url).send().await?;
         let xml_text = response.text().await.unwrap_or_default();
         let sanitized_content = self.sanitize_content(&xml_text).await?;
@@ -78,6 +80,8 @@ impl AssetFetcher {
     // ts looks so ugly like fr 🥀🥀
     ///////////////////////////////////////
     async fn sanitize_content(&mut self, text: &str) -> Result<String, AssetFetcherError> {
+        println!("Sanitizing XML...");
+
         let doc = Document::parse(text)?;
         let root = doc.root_element();
 
@@ -114,6 +118,8 @@ impl AssetFetcher {
 
     // This function starts `n` parallel tasks to fetch multiple files
     async fn fetch_files(&self, file_list: &Vec<Asset>, base_path: &PathBuf) {
+        println!("Fetching files...");
+
         let style = ProgressStyle::with_template("{spinner:.blue} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len}")
             .unwrap()
             .progress_chars("#>-");
@@ -147,6 +153,7 @@ impl AssetFetcher {
         .await;
 
         pb.finish();
+        println!("Done!");
     }
 
     async fn write_to_file(path: &PathBuf, content: &[u8]) -> std::io::Result<()> {
