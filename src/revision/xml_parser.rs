@@ -1,8 +1,10 @@
 use roxmltree::{Document, Node};
 
+use crate::errors::AssetFetcherError;
+
 use super::fetcher::Asset;
 
-pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, Box<dyn std::error::Error>> {
+pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, AssetFetcherError> {
     let doc = Document::parse(&xml_content)?;
     let root = doc.root_element();
 
@@ -28,7 +30,7 @@ pub fn parse_xml(xml_content: &str) -> Result<Vec<Asset>, Box<dyn std::error::Er
     Ok(records)
 }
 
-fn extract_record_data(record_node: Node) -> Result<Asset, Box<dyn std::error::Error>> {
+fn extract_record_data(record_node: Node) -> Result<Asset, AssetFetcherError> {
     let mut asset = Asset::default();
 
     // Map field names to their respective struct fields
