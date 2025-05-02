@@ -3,7 +3,11 @@ use crate::{
     util::{Endianness, hex_decode},
 };
 use regex::Regex;
-use std::{io::Cursor, net::ToSocketAddrs};
+use std::{
+    fs::File,
+    io::{Cursor, Read, Write},
+    net::ToSocketAddrs,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -76,8 +80,13 @@ impl Revision {
         }
 
         // Skip unused fields
-        let _ = cursor.read_u16_le().await?;
+        let _content_length = cursor.read_u16_le().await?;
         let _ = cursor.read_u32_le().await?;
+        /*
+            isControl u8
+            opCode u8
+            Padding u16
+        */
 
         // Verify protocol headers
         let service_id = cursor.read_u8().await?;
@@ -91,6 +100,12 @@ impl Revision {
         let _latest_version = cursor.read_u32_le().await?;
         let _list_file_name = cursor.read_bytestring().await?;
         let _ = cursor.read_u128_le().await?;
+        /*
+            ListFileType u32
+            ListFileTime u32
+            ListFileSize u32
+            ListFileCRC  u32
+        */
         let list_file_url = cursor.read_bytestring().await?;
         let url_prefix = cursor.read_bytestring().await?;
 
