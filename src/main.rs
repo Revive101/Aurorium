@@ -32,7 +32,7 @@ struct Args {
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let revision = Revision::check().await.unwrap();
+    let revision = Revision::check().await?;
     AssetFetcher::new(revision, args.concurrent_downloads, args.save_directory)
         .fetch_index()
         .await?;
