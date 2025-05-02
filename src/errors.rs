@@ -1,11 +1,22 @@
 #[derive(Debug, thiserror::Error)]
-pub enum RevisionError {
+pub enum PatchInfoError {
     #[error("Failed to interact with I/O-Stream")]
     IO(#[from] std::io::Error),
+
+    #[error("Could not resolve address")]
+    AddrResolve,
+
     #[error("Received invalid Header sequence")]
     InvalidHeaderSequence,
+
     #[error("Expected SERVICE_ID=8 & MESSAGE_ID=2 but got {0} & {1}")]
     InvalidProtocol(u8, u8),
+
+    #[error("regex error: {0}")]
+    Regex(#[from] regex::Error),
+
+    #[error("Failed to parse revision string")]
+    InvalidRevisionFormat,
 }
 
 #[derive(Debug, thiserror::Error)]
