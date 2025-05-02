@@ -1,7 +1,7 @@
 use std::{iter::Chain, slice::Iter};
 
 /// Represents a single WAD file with its metadata
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Asset {
     pub filename: String,
     pub file_type: String,
@@ -28,7 +28,7 @@ pub struct AssetList {
 
 impl AssetList {
     /// Returns a combined list of all assets
-    pub fn assets(&self) -> Chain<Iter<'_, Asset>, Iter<'_, Asset>> {
+    pub fn all(&self) -> Chain<Iter<'_, Asset>, Iter<'_, Asset>> {
         self.wads.iter().chain(self.utils.iter())
     }
 
@@ -36,12 +36,16 @@ impl AssetList {
     pub fn diff<'a>(&self, other: &'a AssetList) -> Vec<&'a Asset> {
         let mut changed = Vec::new();
 
-        for new_asset in other.assets() {
-            match self.assets().find(|old| old.filename == new_asset.filename) {
+        for new_asset in other.all() {
+            match self.all().find(|old| old.filename == new_asset.filename) {
                 Some(old) if old.crc == new_asset.crc && old.size == new_asset.size => { /* unchanged */ }
                 _ => changed.push(new_asset),
             }
         }
         changed
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.wads.is_empty() && self.utils.is_empty()
     }
 }
