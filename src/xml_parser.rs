@@ -91,3 +91,46 @@ fn node_to_string(node: Node) -> String {
     s
 }
 //////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::parse_xml;
+
+    #[test]
+    fn test_parse_xml() {
+        let xml_content = r#"
+            <LatestFileList>
+                <Zafaria-ZF_Z13_Mirror_Lake_Drained>
+                    <RECORD>
+                        <SrcFileName>Data/GameData/Zafaria-ZF_Z13_Mirror_Lake_Drained.wad</SrcFileName>
+                        <TarFileName></TarFileName>
+                        <FileType>3</FileType>
+                        <Size>410066</Size>
+                        <HeaderSize>993</HeaderSize>
+                        <CompressedHeaderSize>699</CompressedHeaderSize>
+                        <CRC>3587946300</CRC>
+                        <HeaderCRC>3214041276</HeaderCRC>
+                    </RECORD>
+                </Zafaria-ZF_Z13_Mirror_Lake_Drained>
+                <_Shared-WorldData>
+                    <RECORD>
+                        <SrcFileName>Data/GameData/_Shared-WorldData.wad</SrcFileName>
+                        <TarFileName></TarFileName>
+                        <FileType>3</FileType>
+                        <Size>503228191</Size>
+                        <HeaderSize>1821164</HeaderSize>
+                        <CompressedHeaderSize>583258</CompressedHeaderSize>
+                        <CRC>10566522</CRC>
+                        <HeaderCRC>1108099465</HeaderCRC>
+                    </RECORD>
+                </_Shared-WorldData>
+            </LatestFileList>
+        "#;
+
+        let (wads, utils) = parse_xml(xml_content).unwrap();
+        assert_eq!(wads.len(), 2);
+        assert_eq!(utils.len(), 0);
+        assert_eq!(wads[0].filename, "Data/GameData/Zafaria-ZF_Z13_Mirror_Lake_Drained.wad");
+        assert_eq!(wads[1].filename, "Data/GameData/_Shared-WorldData.wad");
+    }
+}
