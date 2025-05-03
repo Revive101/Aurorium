@@ -44,12 +44,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let revision = PatchInfo::fetch_latest(&args.host, &args.port).await?;
     let new_rev = LocalRevision::new(&revision.revision, &args.save_directory).await.unwrap();
+    let old_rev = LocalRevision::from_name("V_r759882.Wizard_1_550", &args.save_directory).await;
 
-    let old_rev = LocalRevision::from_name("V_r774526.Wizard_1_570", &args.save_directory)
-        .await
-        .unwrap();
+    let mut compared = compare_revisions(&new_rev, &old_rev)?;
 
-    let mut compared = compare_revisions(&new_rev, &Some(old_rev)).unwrap();
+    cfg!(debug_assertions).then(|| {
+        println!(
+            "New Assets: {}, Removed Assets: {}, Changed Assets: {}, Unchanged Assets: {}",
+            compared.new_assets.len(),
+            compared.removed_assets.len(),
+            compared.changed_assets.len(),
+            compared.unchanged_assets.len()
+        );
+
+        println!("Changed:");
+        while let Some(changed) = compared.changed_assets.pop() {
+            println!("{}", changed.filename);
+        }
+
+        println!("Removed:");
+        while let Some(removed) = compared.removed_assets.pop() {
+            println!("{:?}", removed);
+        }
+    });
+
+    //-----
 
     // AssetFetcher::new(revision, args.concurrent_downloads, args.save_directory)
     // .fetch_index()
