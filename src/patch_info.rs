@@ -110,6 +110,8 @@ impl PatchInfo {
     }
 
     fn parse_revision(url: &str) -> Result<String, PatchInfoError> {
+        println!("{url}");
+
         let reg = Regex::new(r"/(V_[^/]+)/")?;
 
         if let Some(cap) = reg.captures(url).and_then(|c| c.get(1)) {
@@ -117,5 +119,29 @@ impl PatchInfo {
         }
 
         return Err(PatchInfoError::InvalidRevisionFormat);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const HOST: &str = "patch.us.wizard101.com";
+    const PORT: &str = "12500";
+
+    #[tokio::test]
+    async fn test_connection() {
+        let patch_info = PatchInfo::fetch_latest(HOST, PORT).await.unwrap();
+        assert!(!patch_info.list_file_url.is_empty(), "List file URL should not be empty");
+        assert!(!patch_info.url_prefix.is_empty(), "URL prefix should not be empty");
+        assert!(!patch_info.revision.is_empty(), "Revision should not be empty");
+    }
+
+    #[tokio::test]
+    async fn test_parse_revision_valid() {
+        let url = "http://versionak.us.wizard101.com/WizPatcher/V_r774907.Wizard_1_570/Windows/LatestFileList.bin";
+        let result = PatchInfo::parse_revision(url).unwrap();
+
+        assert_eq!(result, "V_r774907.Wizard_1_570");
     }
 }
