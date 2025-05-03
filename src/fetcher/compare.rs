@@ -5,6 +5,9 @@ use std::collections::HashMap;
 pub enum RevisionDiffError {
     #[error("New revision has no assets (failed to parse?)")]
     NoAssets,
+
+    #[error("Comparing same revisions: {0} & {1}")]
+    SameRevision(u64, u64),
 }
 
 #[derive(Debug, Default)]
@@ -45,11 +48,18 @@ pub fn compare_revisions(new_revision: &LocalRevision, old_revision: &Option<Loc
         return Ok(diff);
     }
 
-    let old_assets = &old_revision.as_ref().unwrap().assets;
+    let old_revision = old_revision.as_ref().unwrap();
+
+    let new_revision_number = new_revision.revision_number;
+    let old_revision_number = old_revision.revision_number;
+
+    if new_revision_number == old_revision_number {
+        return Err(RevisionDiffError::SameRevision(new_revision_number, old_revision_number));
+    }
 
     // Create a map of old assets by filename for quick lookup
     let mut old_asset_map: HashMap<String, &Asset> = HashMap::new();
-    for asset in old_assets.all() {
+    for asset in old_revision.assets.all() {
         old_asset_map.insert(asset.filename.clone(), asset);
     }
 
@@ -57,7 +67,6 @@ pub fn compare_revisions(new_revision: &LocalRevision, old_revision: &Option<Loc
     for asset in new_revision.assets.all() {
         if let Some(old_asset) = old_asset_map.get(&asset.filename) {
             // Asset exists in both revisions
-            println!("{} == {} ? {}", old_asset.crc, asset.crc, old_asset.crc == asset.crc);
             if asset.crc == old_asset.crc && asset.size == old_asset.size {
                 diff.unchanged_assets.push(asset.clone());
             } else {
