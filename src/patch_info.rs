@@ -110,8 +110,6 @@ impl PatchInfo {
     }
 
     fn parse_revision(url: &str) -> Result<String, PatchInfoError> {
-        println!("{url}");
-
         let reg = Regex::new(r"/(V_[^/]+)/")?;
 
         if let Some(cap) = reg.captures(url).and_then(|c| c.get(1)) {
