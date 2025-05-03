@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "AuroriumRewrite"
-version = "0.1.0"
+version = "3.0.0"
 dependencies = [
  "axum",
  "clap",
