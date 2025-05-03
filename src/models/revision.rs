@@ -1,6 +1,5 @@
-use crate::xml_parser::parse_xml;
-
 use super::asset::AssetList;
+use crate::xml_parser::{parse_xml, sanitize_content};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -73,7 +72,7 @@ impl LocalRevision {
 
         let mut list = AssetList::default();
         let xml_content = fs::read_to_string(path).await.unwrap();
-        let (wads, utils) = parse_xml(&xml_content).unwrap();
+        let (wads, utils) = parse_xml(&sanitize_content(&xml_content).await.unwrap()).unwrap();
 
         list.wads = wads;
         list.utils = utils;
@@ -81,3 +80,11 @@ impl LocalRevision {
         list
     }
 }
+
+impl PartialEq for LocalRevision {
+    fn eq(&self, other: &Self) -> bool {
+        self.revision_number == other.revision_number
+    }
+}
+
+impl Eq for LocalRevision {}
