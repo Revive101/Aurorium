@@ -17,11 +17,6 @@ pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFet
 
     cfg!(debug_assertions).then(|| {
         println!("Found {} records", records.len());
-        for record in records.iter().take(5) {
-            println!("Entry: {}", record.filename);
-            println!("  Size: {} bytes", record.size);
-            println!("");
-        }
     });
 
     let (wads, utils) = records.into_iter().partition(|f| f.filename.ends_with(".wad"));
