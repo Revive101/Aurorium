@@ -86,6 +86,10 @@ impl LocalRevision {
     }
 
     pub async fn find_revision_for_asset(revision: String, asset_name: &String) -> Option<String> {
+        if asset_name.contains("LatestFileList") {
+            return Some(revision);
+        }
+
         let local_revision = Self::from_name(&revision, &ARGS.save_directory).await?;
         let local_asset = local_revision.assets.find_by_name(&asset_name)?;
 
