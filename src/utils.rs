@@ -4,8 +4,6 @@ use axum::{
 };
 use std::net::SocketAddr;
 
-use crate::fetcher::compare::RevisionDiff;
-
 pub enum Endianness {
     Little,
     Big,
@@ -53,43 +51,4 @@ where
 
         Ok(ConnectionAddr(connection_info.0.ip().to_string()))
     }
-}
-
-pub fn format_new_assets(diff: &RevisionDiff) -> String {
-    if diff.new_assets.is_empty() {
-        return String::from("No new assets.");
-    }
-
-    let mut message = String::from("```ansi\n[2;32m");
-    for asset in &diff.new_assets {
-        message.push_str(&format!("{}\n", asset.filename));
-    }
-    message.push_str("[0m```");
-    message
-}
-
-pub fn format_changed_assets(diff: &RevisionDiff) -> String {
-    if diff.changed_assets.is_empty() {
-        return String::from("No changed assets.");
-    }
-
-    let mut message = String::from("```ansi\n[2;32m[2;33m[0m[2;32m[2;33m");
-    for asset in &diff.changed_assets {
-        message.push_str(&format!("{}\n", asset.filename));
-    }
-    message.push_str("[0m[2;32m[0m```");
-    message
-}
-
-pub fn format_removed_assets(diff: &RevisionDiff) -> String {
-    if diff.removed_assets.is_empty() {
-        return String::from("No removed assets.");
-    }
-
-    let mut message = String::from("```ansi\n[2;32m[2;33m[0m[2;32m[2;33m[2;31m");
-    for asset in &diff.removed_assets {
-        message.push_str(&format!("{}\n", asset.filename));
-    }
-    message.push_str("[0m[2;33m[0m[2;32m[0m```");
-    message
 }
