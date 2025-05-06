@@ -33,7 +33,7 @@ impl PartialEq for LocalRevision {
 impl Eq for LocalRevision {}
 
 impl LocalRevision {
-    pub async fn new<P>(name: &str, base_path: P, assets: AssetList) -> Option<Self>
+    pub fn new<P>(name: &str, base_path: P, assets: AssetList) -> Option<Self>
     where
         P: AsRef<Path>,
     {

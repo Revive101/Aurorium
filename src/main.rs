@@ -95,9 +95,7 @@ async fn main() -> std::io::Result<()> {
             asset_fetcher.fetch_index().await.unwrap();
 
             let assets = asset_fetcher.assets.clone();
-            let new_rev = LocalRevision::new(&patch_info.revision, &ARGS.save_directory, assets)
-                .await
-                .unwrap();
+            let new_rev = LocalRevision::new(&patch_info.revision, &ARGS.save_directory, assets).unwrap();
 
             let newest_rev_on_disk = LocalRevision::newest().await;
 
