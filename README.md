@@ -1,6 +1,6 @@
 <p align="center" style="text-align: center">
   <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Ringed%20Planet.png" style="display: block; margin: 0 auto;">
-  <h1 style="text-align: center; margin-top: 0;">Aurorium</h1>
+  <h1 style="text-align: center; margin-top: 0;" align="center">Aurorium</h1>
   <p align="center">
     <img src="https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white" alt="Rust">
     <img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey.svg?style=for-the-badge" alt="License">
@@ -99,7 +99,6 @@ V_r[Major].[Minor]
 
 Examples:
 
-- `V_r746756.1`
 - `V_r746756.WizardDev`
 - `V_r766982.Wizard_1_560_0_Live`
 
