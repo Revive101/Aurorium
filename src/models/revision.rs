@@ -11,7 +11,7 @@ use tokio::fs;
 #[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Debug, Clone, Serialize, Hash)]
 pub struct LocalRevision {
-    /// Revision name (e.g., V_r773351.Wizard_1_570_0_Live)
+    /// Revision name (e.g., `V_r773351.Wizard_1_570_0_Live`)
     pub name: String,
 
     /// Numeric revision number for comparison
@@ -81,7 +81,7 @@ impl LocalRevision {
 
         if let Ok(mut entries) = tokio::fs::read_dir(path).await {
             while let Some(entry) = entries.next_entry().await? {
-                if !entry.file_type().await.unwrap().is_dir() {
+                if !entry.file_type().await?.is_dir() {
                     continue;
                 }
 

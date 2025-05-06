@@ -17,6 +17,9 @@ pub enum PatchInfoError {
 
     #[error("Failed to parse revision string")]
     InvalidRevisionFormat,
+
+    #[error("Failed to parse hex string")]
+    InvalidHex,
 }
 
 #[derive(Debug, thiserror::Error)]

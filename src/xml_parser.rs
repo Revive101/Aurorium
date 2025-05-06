@@ -1,5 +1,6 @@
 use crate::{errors::AssetFetcherError, models::asset::Asset};
 use roxmltree::{Document, Node};
+use std::fmt::Write;
 
 pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFetcherError> {
     let doc = Document::parse(xml_content)?;
@@ -7,10 +8,10 @@ pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFet
 
     let mut records = Vec::new();
 
-    for node in root.children().filter(|n| n.is_element()) {
+    for node in root.children().filter(Node::is_element) {
         // Process each RECORD under the zone
         for inner_node in node.children().filter(|n| n.is_element() && n.tag_name().name() == "RECORD") {
-            let record = extract_record_data(inner_node)?;
+            let record = extract_record_data(inner_node);
             records.push(record);
         }
     }
@@ -24,11 +25,11 @@ pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFet
     Ok((wads, utils))
 }
 
-fn extract_record_data(record_node: Node) -> Result<Asset, AssetFetcherError> {
+fn extract_record_data(record_node: Node) -> Asset {
     let mut asset = Asset::default();
 
     // Map field names to their respective struct fields
-    for child in record_node.children().filter(|n| n.is_element()) {
+    for child in record_node.children().filter(Node::is_element) {
         let tag_name = child.tag_name().name();
 
         let text = child.text().unwrap_or("").trim();
@@ -45,7 +46,7 @@ fn extract_record_data(record_node: Node) -> Result<Asset, AssetFetcherError> {
         }
     }
 
-    Ok(asset)
+    asset
 }
 
 // ts looks so ugly like fr 🥀🥀
@@ -72,17 +73,17 @@ pub async fn sanitize_content(text: &str) -> Result<String, AssetFetcherError> {
 
 fn node_to_string(node: Node) -> String {
     let mut s = String::new();
-    s.push_str(&format!("<{}>", node.tag_name().name()));
+    write!(s, "<{}>", node.tag_name().name()).unwrap();
 
     for child in node.children() {
         match () {
-            _ if child.is_element() => s.push_str(&node_to_string(child)),
-            _ if child.is_text() => s.push_str(child.text().unwrap_or("")),
-            _ => (),
+            () if child.is_element() => s.push_str(&node_to_string(child)),
+            () if child.is_text() => s.push_str(child.text().unwrap_or("")),
+            () => (),
         }
     }
 
-    s.push_str(&format!("</{}>", node.tag_name().name()));
+    write!(s, "</{}>", node.tag_name().name()).unwrap();
     s
 }
 //////////////////////////////////////

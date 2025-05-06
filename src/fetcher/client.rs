@@ -123,7 +123,7 @@ impl AssetFetcher {
                         file_pb.set_length(res.content_length().unwrap_or(0));
 
                         if let Err(e) = Self::write_to_file_chunked_with_progress(&path, res, &file_pb).await {
-                            file_pb.finish_with_message(format!("Failed: {}", e));
+                            file_pb.finish_with_message(format!("Failed: {e}"));
                         } else {
                             file_pb.finish_with_message("Done");
                         }

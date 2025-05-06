@@ -25,16 +25,6 @@ pub struct RevisionDiff {
     pub removed_assets: Vec<Asset>,
 }
 
-impl RevisionDiff {
-    /// Get all assets that need to be downloaded (new + changed)
-    pub fn assets_to_download(&self) -> Vec<&Asset> {
-        let mut result = Vec::with_capacity(self.new_assets.len() + self.changed_assets.len());
-        result.extend(self.new_assets.iter());
-        result.extend(self.changed_assets.iter());
-        result
-    }
-}
-
 pub async fn compare_revisions(
     new_revision: &LocalRevision,
     old_revision: Option<LocalRevision>,
@@ -46,12 +36,10 @@ pub async fn compare_revisions(
     let mut diff = RevisionDiff::default();
 
     // If there's no old asset list, all assets are new
-    if old_revision.is_none() {
+    let Some(mut old_revision) = old_revision else {
         diff.new_assets = new_revision.assets.all().cloned().collect();
         return Ok(diff);
-    }
-
-    let mut old_revision = old_revision.unwrap();
+    };
 
     let new_revision_number = new_revision.revision_number;
     let old_revision_number = old_revision.revision_number;

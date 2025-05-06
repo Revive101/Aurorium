@@ -9,6 +9,7 @@ pub enum Endianness {
     Big,
 }
 
+#[must_use]
 pub fn hex_decode(hex_string: &str, endianness: &Endianness) -> Option<Vec<u8>> {
     if hex_string.len() % 2 != 0 {
         return None;

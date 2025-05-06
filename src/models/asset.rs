@@ -26,10 +26,12 @@ impl AssetList {
         self.wads.iter().chain(self.utils.iter())
     }
 
+    #[must_use]
     pub fn find_by_name(&self, name: &str) -> Option<&Asset> {
         self.all().find(|asset| asset.filename == name)
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.wads.is_empty() && self.utils.is_empty()
     }

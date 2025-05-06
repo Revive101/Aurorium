@@ -56,7 +56,9 @@ impl PatchInfo {
         stream.read(&mut buffer).await?;
 
         // Send session accept
-        let accept_bytes = hex_decode(SESSION_ACCEPT, &Endianness::Little).unwrap();
+        let Some(accept_bytes) = hex_decode(SESSION_ACCEPT, &Endianness::Little) else {
+            return Err(PatchInfoError::InvalidHex);
+        };
         stream.write_all(&accept_bytes).await?;
 
         // Read server response
