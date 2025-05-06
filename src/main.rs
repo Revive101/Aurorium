@@ -26,11 +26,6 @@ pub mod xml_parser;
 const HOST: &str = "patch.us.wizard101.com";
 const PORT: &str = "12500";
 
-// lazy_static! {
-//     pub static ref REVISIONS: RwLock<HashSet<LocalRevision>> = RwLock::new(HashSet::new());
-//     pub static ref ARGS: Args = Args::parse();
-// }
-
 pub static REVISIONS: LazyLock<RwLock<HashSet<LocalRevision>>> = LazyLock::new(|| RwLock::new(HashSet::new()));
 pub static ARGS: LazyLock<Args> = LazyLock::new(|| Args::parse());
 
