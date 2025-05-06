@@ -19,7 +19,7 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
 
         let file_length = file.metadata().await.map(|meta| meta.len()).unwrap_or(0).to_string();
         let file_name = path.file_name().unwrap().to_string_lossy();
-        let header_content = format!("attachment; filename=\"{}\"", file_name.to_string());
+        let header_content = format!("attachment; filename=\"{}\"", file_name);
         let headers = AppendHeaders([
             (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
             (header::CONTENT_DISPOSITION, &header_content),

@@ -76,7 +76,7 @@ impl AssetFetcher {
         self.assets.utils = utils;
 
         if !save_path.exists() {
-            Self::write_to_file(&save_path, &sanitized_content.into_bytes()).await?;
+            Self::write_to_file(save_path, &sanitized_content.into_bytes()).await?;
         }
 
         Ok(())

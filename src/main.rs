@@ -101,34 +101,29 @@ async fn main() -> std::io::Result<()> {
 
             let newest_rev_on_disk = LocalRevision::newest().await;
 
-            let compared = compare_revisions(&new_rev, newest_rev_on_disk).await;
-            match compared {
-                Ok(compared) => {
-                    println!("[INFO] New revision found: {}", new_rev.name);
-                    REVISIONS.write().await.insert(new_rev.clone());
+            if let Ok(compared) = compare_revisions(&new_rev, newest_rev_on_disk).await {
+                println!("[INFO] New revision found: {}", new_rev.name);
+                REVISIONS.write().await.insert(new_rev.clone());
 
-                    if !compared.new_assets.is_empty() {
-                        println!("[INFO] fetching new assets...");
-                        asset_fetcher.fetch_files(compared.new_assets.clone()).await;
-                    }
-
-                    if !compared.changed_assets.is_empty() {
-                        println!("[INFO] fetching changed assets...");
-                        asset_fetcher.fetch_files(compared.changed_assets.clone()).await;
-                    }
-
-                    cfg!(debug_assertions).then(|| {
-                        println!(
-                            "New Assets: {}, Removed Assets: {}, Changed Assets: {}, Unchanged Assets: {}",
-                            compared.new_assets.len(),
-                            compared.removed_assets.len(),
-                            compared.changed_assets.len(),
-                            compared.unchanged_assets.len()
-                        );
-                    });
+                if !compared.new_assets.is_empty() {
+                    println!("[INFO] fetching new assets...");
+                    asset_fetcher.fetch_files(compared.new_assets.clone()).await;
                 }
 
-                _ => {}
+                if !compared.changed_assets.is_empty() {
+                    println!("[INFO] fetching changed assets...");
+                    asset_fetcher.fetch_files(compared.changed_assets.clone()).await;
+                }
+
+                cfg!(debug_assertions).then(|| {
+                    println!(
+                        "New Assets: {}, Removed Assets: {}, Changed Assets: {}, Unchanged Assets: {}",
+                        compared.new_assets.len(),
+                        compared.removed_assets.len(),
+                        compared.changed_assets.len(),
+                        compared.unchanged_assets.len()
+                    );
+                });
             }
 
             sleep(Duration::from_secs(ARGS.fetch_interval)).await;

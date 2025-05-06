@@ -2,7 +2,7 @@ use crate::{errors::AssetFetcherError, models::asset::Asset};
 use roxmltree::{Document, Node};
 
 pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFetcherError> {
-    let doc = Document::parse(&xml_content)?;
+    let doc = Document::parse(xml_content)?;
     let root = doc.root_element();
 
     let mut records = Vec::new();

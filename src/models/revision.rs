@@ -8,6 +8,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
+#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Debug, Clone, Serialize, Hash)]
 pub struct LocalRevision {
     /// Revision name (e.g., V_r773351.Wizard_1_570_0_Live)
@@ -23,6 +24,14 @@ pub struct LocalRevision {
     pub assets: AssetList,
 }
 
+impl PartialEq for LocalRevision {
+    fn eq(&self, other: &Self) -> bool {
+        self.revision_number == other.revision_number
+    }
+}
+
+impl Eq for LocalRevision {}
+
 impl LocalRevision {
     pub async fn new<P>(name: &str, base_path: P, assets: AssetList) -> Option<Self>
     where
@@ -31,7 +40,7 @@ impl LocalRevision {
         let path = base_path.as_ref().join(name);
         Some(Self {
             name: name.to_string(),
-            revision_number: Self::capture_revision(&name)?,
+            revision_number: Self::capture_revision(name)?,
             assets,
             path,
         })
@@ -85,13 +94,13 @@ impl LocalRevision {
         Ok(())
     }
 
-    pub async fn find_revision_for_asset(revision: String, asset_name: &String) -> Option<String> {
+    pub async fn find_revision_for_asset(revision: String, asset_name: &str) -> Option<String> {
         if asset_name.contains("LatestFileList") {
             return Some(revision);
         }
 
         let local_revision = Self::from_name(&revision, &ARGS.save_directory).await?;
-        let local_asset = local_revision.assets.find_by_name(&asset_name)?;
+        let local_asset = local_revision.assets.find_by_name(asset_name)?;
 
         let revisions = REVISIONS.read().await.clone();
         revisions.iter().collect::<Vec<_>>().sort_by_key(|r| r.revision_number);
@@ -117,7 +126,7 @@ impl LocalRevision {
         Some(revision_number)
     }
 
-    async fn generate_asset_list(path: &PathBuf) -> AssetList {
+    async fn generate_asset_list(path: &Path) -> AssetList {
         let path = path.join("LatestFileList.xml");
 
         if !path.exists() {
@@ -134,11 +143,3 @@ impl LocalRevision {
         list
     }
 }
-
-impl PartialEq for LocalRevision {
-    fn eq(&self, other: &Self) -> bool {
-        self.revision_number == other.revision_number
-    }
-}
-
-impl Eq for LocalRevision {}

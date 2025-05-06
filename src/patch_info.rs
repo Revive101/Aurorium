@@ -52,6 +52,7 @@ impl PatchInfo {
         let mut buffer = [0u8; BUFFER_SIZE];
 
         // read initial offer
+        #[allow(clippy::unused_io_amount)]
         stream.read(&mut buffer).await?;
 
         // Send session accept
@@ -59,6 +60,7 @@ impl PatchInfo {
         stream.write_all(&accept_bytes).await?;
 
         // Read server response
+        #[allow(clippy::unused_io_amount)]
         stream.read(&mut buffer).await?;
         stream.shutdown().await?;
 
@@ -116,7 +118,7 @@ impl PatchInfo {
             return Ok(cap.as_str().to_string());
         }
 
-        return Err(PatchInfoError::InvalidRevisionFormat);
+        Err(PatchInfoError::InvalidRevisionFormat)
     }
 }
 
