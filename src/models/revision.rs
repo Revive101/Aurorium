@@ -1,10 +1,14 @@
 use super::asset::AssetList;
-use crate::xml_parser::{parse_xml, sanitize_content};
+use crate::{
+    ARGS, REVISIONS,
+    xml_parser::{parse_xml, sanitize_content},
+};
 use regex::Regex;
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalRevision {
     /// Revision name (e.g., V_r773351.Wizard_1_570_0_Live)
     pub name: String,
@@ -20,16 +24,15 @@ pub struct LocalRevision {
 }
 
 impl LocalRevision {
-    pub async fn new<P>(name: &str, base_path: P) -> Option<Self>
+    pub async fn new<P>(name: &str, base_path: P, assets: AssetList) -> Option<Self>
     where
         P: AsRef<Path>,
     {
         let path = base_path.as_ref().join(name);
-
         Some(Self {
             name: name.to_string(),
-            revision_number: Self::capture_revision(name)?,
-            assets: Self::generate_asset_list(&path).await,
+            revision_number: Self::capture_revision(&name)?,
+            assets,
             path,
         })
     }
@@ -48,6 +51,53 @@ impl LocalRevision {
                 assets: Self::generate_asset_list(&path).await,
                 path,
             });
+        }
+
+        None
+    }
+
+    pub async fn newest() -> Option<Self> {
+        let revisions = REVISIONS.read().await;
+        revisions.iter().max_by_key(|rev| rev.revision_number).cloned()
+    }
+
+    pub async fn init_all<P>(base_path: P) -> std::io::Result<()>
+    where
+        P: AsRef<Path> + Copy,
+    {
+        println!("Initializing all revisions on disk...");
+        let mut revisions = REVISIONS.write().await;
+
+        let path = base_path.as_ref();
+
+        if let Ok(mut entries) = tokio::fs::read_dir(path).await {
+            while let Some(entry) = entries.next_entry().await? {
+                if !entry.file_type().await.unwrap().is_dir() {
+                    continue;
+                }
+
+                let name = entry.file_name().to_string_lossy().to_string();
+                let revision = Self::from_name(&name, base_path).await.unwrap();
+                revisions.push(revision);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn find_revision_for_asset(revision: String, asset_name: &String) -> Option<String> {
+        let local_revision = Self::from_name(&revision, &ARGS.save_directory).await?;
+        let local_asset = local_revision.assets.find_by_name(&asset_name)?;
+
+        let mut revisions = REVISIONS.read().await.clone();
+        revisions.sort_by_key(|r| r.revision_number);
+
+        for rev in revisions {
+            for asset in rev.assets.all() {
+                if asset.crc == local_asset.crc && asset.size == local_asset.size {
+                    return Some(rev.name);
+                }
+            }
         }
 
         None
