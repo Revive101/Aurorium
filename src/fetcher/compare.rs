@@ -1,4 +1,7 @@
-use crate::models::{asset::Asset, revision::LocalRevision};
+use crate::{
+    REVISIONS,
+    models::{asset::Asset, revision::LocalRevision},
+};
 use std::collections::HashMap;
 
 #[derive(Debug, thiserror::Error)]
@@ -6,8 +9,8 @@ pub enum RevisionDiffError {
     #[error("New revision has no assets (failed to parse?)")]
     NoAssets,
 
-    #[error("Comparing same revisions: {0} & {1}")]
-    SameRevision(u64, u64),
+    #[error("Comparing same revisions")]
+    SameRevision(Vec<Asset>, Vec<Asset>),
 }
 
 #[derive(Debug, Default)]
@@ -35,7 +38,10 @@ impl RevisionDiff {
     }
 }
 
-pub fn compare_revisions(new_revision: &LocalRevision, old_revision: &Option<LocalRevision>) -> Result<RevisionDiff, RevisionDiffError> {
+pub async fn compare_revisions(
+    new_revision: &LocalRevision,
+    old_revision: Option<LocalRevision>,
+) -> Result<RevisionDiff, RevisionDiffError> {
     if new_revision.assets.is_empty() {
         return Err(RevisionDiffError::NoAssets);
     }
@@ -48,13 +54,28 @@ pub fn compare_revisions(new_revision: &LocalRevision, old_revision: &Option<Loc
         return Ok(diff);
     }
 
-    let old_revision = old_revision.as_ref().unwrap();
+    let mut old_revision = old_revision.unwrap();
 
     let new_revision_number = new_revision.revision_number;
     let old_revision_number = old_revision.revision_number;
 
     if new_revision_number == old_revision_number {
-        return Err(RevisionDiffError::SameRevision(new_revision_number, old_revision_number));
+        // If the revisions are the same, we check if there are missing assets (eg. if the fetching was interrupted)
+
+        // we want to use the newest revision except the one we are currently using
+        let updated_revision = REVISIONS.read().await.clone();
+
+        if updated_revision.len() == 1 {
+            diff.new_assets = new_revision.assets.all().cloned().collect();
+            return Ok(diff);
+        }
+
+        old_revision = updated_revision
+            .iter()
+            .filter(|rev| rev.revision_number != new_revision_number)
+            .max_by_key(|rev| rev.revision_number)
+            .cloned()
+            .unwrap();
     }
 
     // Create a map of old assets by filename for quick lookup
