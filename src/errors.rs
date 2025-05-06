@@ -33,3 +33,9 @@ pub enum AssetFetcherError {
     #[error("Failed to parse XML")]
     XMLParser(#[from] roxmltree::Error),
 }
+
+#[derive(Debug, thiserror::Error)]
+pub enum RevisionDiffError {
+    #[error("New revision has no assets (failed to parse?)")]
+    NoAssets,
+}

@@ -1,14 +1,9 @@
 use crate::{
     REVISIONS,
+    errors::RevisionDiffError,
     models::{asset::Asset, revision::LocalRevision},
 };
 use std::collections::HashMap;
-
-#[derive(Debug, thiserror::Error)]
-pub enum RevisionDiffError {
-    #[error("New revision has no assets (failed to parse?)")]
-    NoAssets,
-}
 
 #[derive(Debug, Default)]
 pub struct RevisionDiff {
