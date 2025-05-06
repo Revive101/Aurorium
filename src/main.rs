@@ -1,10 +1,10 @@
-use axum::{Router, routing::get};
+use axum::{Router, error_handling::HandleErrorLayer, routing::get};
 use clap::Parser;
 use fetcher::{client::AssetFetcher, compare::compare_revisions};
 use lazy_static::lazy_static;
 use models::revision::LocalRevision;
 use patch_info::PatchInfo;
-use routes::{file, revisions};
+use routes::{file, handle_error, revisions};
 use std::{
     collections::HashSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
@@ -13,6 +13,7 @@ use std::{
     time::Duration,
 };
 use tokio::{join, net::TcpListener, sync::RwLock, time::sleep};
+use tower::{ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer, timeout::TimeoutLayer};
 
 pub mod errors;
 pub mod fetcher;
@@ -50,6 +51,15 @@ pub struct Args {
 
     #[arg(short, long, default_value_t = 60 * 60 * 8)]
     fetch_interval: u64,
+
+    #[arg(short, long, default_value_t = 256)]
+    max_requests: u64,
+
+    #[arg(short, long, default_value_t = 60)]
+    reset_interval: u64,
+
+    #[arg(short, long, default_value_t = 10)]
+    timeout: u64,
 }
 
 #[tokio::main]
@@ -61,7 +71,14 @@ async fn main() -> std::io::Result<()> {
     let file_serving = tokio::spawn(async move {
         let router = Router::new()
             .route("/{revision}/{*file_path}", get(file))
-            .route("/revisions", get(revisions));
+            .route("/revisions", get(revisions))
+            .layer(
+                ServiceBuilder::new()
+                    .layer(HandleErrorLayer::new(handle_error))
+                    .layer(BufferLayer::new(1024))
+                    .layer(RateLimitLayer::new(ARGS.max_requests, Duration::from_secs(ARGS.reset_interval)))
+                    .layer(TimeoutLayer::new(Duration::from_secs(ARGS.timeout))),
+            );
 
         let listener = TcpListener::bind(&ARGS.endpoint).await.unwrap();
         axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>())

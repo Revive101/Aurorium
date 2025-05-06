@@ -1,5 +1,6 @@
 use crate::{ARGS, REVISIONS, models::revision::LocalRevision, utils::ConnectionAddr};
 use axum::{
+    BoxError,
     body::Body,
     extract::Path,
     response::{AppendHeaders, IntoResponse},
@@ -39,4 +40,8 @@ pub async fn revisions(ConnectionAddr(addr): ConnectionAddr) -> impl IntoRespons
     let headers = AppendHeaders([(header::CONTENT_TYPE, "application/json; charset=utf-8")]);
 
     (headers, json!(*revisions).to_string()).into_response()
+}
+
+pub async fn handle_error(error: BoxError) -> impl IntoResponse {
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("Unhandled error: {}", error))
 }
