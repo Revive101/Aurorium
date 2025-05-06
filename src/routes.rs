@@ -10,6 +10,8 @@ use serde_json::json;
 use tokio_util::io::ReaderStream;
 
 pub async fn file(Path((revision, file_path)): Path<(String, String)>, ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+    println!("{addr} connected to /{revision}/{file_path}");
+
     if let Some(revision_for_asset) = LocalRevision::find_revision_for_asset(revision, &file_path).await {
         let path = ARGS.save_directory.join(revision_for_asset).join(file_path);
         let file = match tokio::fs::File::open(&path).await {
@@ -36,6 +38,8 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
 }
 
 pub async fn revisions(ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+    println!("{addr} connected to /revisions");
+
     let revisions = REVISIONS.read().await.iter().map(|r| r.name.clone()).collect::<Vec<_>>();
     let headers = AppendHeaders([(header::CONTENT_TYPE, "application/json; charset=utf-8")]);
 
