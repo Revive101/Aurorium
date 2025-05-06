@@ -8,9 +8,6 @@ use std::collections::HashMap;
 pub enum RevisionDiffError {
     #[error("New revision has no assets (failed to parse?)")]
     NoAssets,
-
-    #[error("Comparing same revisions")]
-    SameRevision(Vec<Asset>, Vec<Asset>),
 }
 
 #[derive(Debug, Default)]
