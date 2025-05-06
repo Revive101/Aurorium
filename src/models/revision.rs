@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Hash)]
 pub struct LocalRevision {
     /// Revision name (e.g., V_r773351.Wizard_1_570_0_Live)
     pub name: String,
@@ -78,7 +78,7 @@ impl LocalRevision {
 
                 let name = entry.file_name().to_string_lossy().to_string();
                 let revision = Self::from_name(&name, base_path).await.unwrap();
-                revisions.push(revision);
+                revisions.insert(revision);
             }
         }
 
@@ -89,8 +89,8 @@ impl LocalRevision {
         let local_revision = Self::from_name(&revision, &ARGS.save_directory).await?;
         let local_asset = local_revision.assets.find_by_name(&asset_name)?;
 
-        let mut revisions = REVISIONS.read().await.clone();
-        revisions.sort_by_key(|r| r.revision_number);
+        let revisions = REVISIONS.read().await.clone();
+        revisions.iter().collect::<Vec<_>>().sort_by_key(|r| r.revision_number);
 
         for rev in revisions {
             for asset in rev.assets.all() {

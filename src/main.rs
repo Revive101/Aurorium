@@ -1,23 +1,18 @@
 use axum::{Router, routing::get};
 use clap::Parser;
-use fetcher::{
-    client::AssetFetcher,
-    compare::{RevisionDiffError, compare_revisions},
-};
+use fetcher::{client::AssetFetcher, compare::compare_revisions};
 use lazy_static::lazy_static;
 use models::revision::LocalRevision;
 use patch_info::PatchInfo;
 use routes::{file, revisions};
-use serde_json::json;
 use std::{
-    error::Error,
+    collections::HashSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     num::NonZeroUsize,
     path::PathBuf,
     time::Duration,
 };
 use tokio::{join, net::TcpListener, sync::RwLock, time::sleep};
-use utils::{format_changed_assets, format_new_assets, format_removed_assets};
 
 pub mod errors;
 pub mod fetcher;
@@ -31,7 +26,7 @@ const HOST: &str = "patch.us.wizard101.com";
 const PORT: &str = "12500";
 
 lazy_static! {
-    pub static ref REVISIONS: RwLock<Vec<LocalRevision>> = RwLock::new(Vec::new());
+    pub static ref REVISIONS: RwLock<HashSet<LocalRevision>> = RwLock::new(HashSet::new());
     pub static ref ARGS: Args = Args::parse();
 }
 
@@ -41,7 +36,7 @@ pub struct Args {
     #[arg(short, long, env = "ENDPOINT", default_value_t = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 12369))]
     endpoint: SocketAddrV4,
 
-    #[arg(short, long, env = "CONCURRENT_DOWNLOADS", default_value_t = unsafe { NonZeroUsize::new_unchecked(4) })]
+    #[arg(short, long, env = "CONCURRENT_DOWNLOADS", default_value_t = unsafe { NonZeroUsize::new_unchecked(2) })]
     concurrent_downloads: NonZeroUsize,
 
     #[arg(short, long, env = "SAVE_DIRECTORY", default_value = "data")]
@@ -53,18 +48,16 @@ pub struct Args {
     #[arg(long, env = "PORT", default_value = PORT)]
     port: String,
 
-    #[arg(long, env = "WEBHOOK_TOKEN")]
-    webhook_token: Option<String>,
-
-    #[arg(short, long, default_value_t = 60)]
+    #[arg(short, long, default_value_t = 60 * 60 * 8)]
     fetch_interval: u64,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> std::io::Result<()> {
     // Initialize all revisions on disk
     LocalRevision::init_all(&ARGS.save_directory).await?;
 
+    // Start file server
     let file_serving = tokio::spawn(async move {
         let router = Router::new()
             .route("/{revision}/{*file_path}", get(file))
@@ -95,6 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match compared {
                 Ok(compared) => {
                     println!("[INFO] New revision found: {}", new_rev.name);
+                    REVISIONS.write().await.insert(new_rev.clone());
 
                     if !compared.new_assets.is_empty() {
                         println!("[INFO] fetching new assets...");
@@ -105,28 +99,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         println!("[INFO] fetching changed assets...");
                         asset_fetcher.fetch_files(compared.changed_assets.clone()).await;
                     }
-
-                    if let Some(webhook) = &ARGS.webhook_token {
-                        if REVISIONS.read().await.iter().any(|r| r.name == new_rev.name) {
-                            continue;
-                        }
-
-                        let payload = json!({
-                          "content": "",
-                          "embeds": [
-                            {
-                              "title": "📦 New Revision Detected",
-                              "description": format!("Revision: `{}`\n\nNew Assets:\n{}\n\nChanged Assets:\n{}\n\nRemoved Assets:\n{}", new_rev.name, format_new_assets(&compared), format_changed_assets(&compared), format_removed_assets(&compared)),
-                              "color": 65351
-                            }
-                          ],
-                        });
-
-                        let client = reqwest::Client::new();
-                        client.post(webhook).json(&payload).send().await.unwrap();
-                    }
-
-                    REVISIONS.write().await.push(new_rev.clone());
 
                     cfg!(debug_assertions).then(|| {
                         println!(

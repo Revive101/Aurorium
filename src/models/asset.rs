@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::{iter::Chain, slice::Iter};
 
 /// Represents a single WAD file with its metadata
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Hash)]
 pub struct Asset {
     pub filename: String,
     pub file_type: String,
@@ -14,7 +14,7 @@ pub struct Asset {
 }
 
 /// Categorizes different types of game assets
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Hash)]
 pub struct AssetList {
     pub wads: Vec<Asset>,
     pub utils: Vec<Asset>,
