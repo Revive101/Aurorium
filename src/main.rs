@@ -1,7 +1,6 @@
 use axum::{Router, error_handling::HandleErrorLayer, routing::get};
 use clap::Parser;
 use fetcher::{client::AssetFetcher, compare::compare_revisions};
-use lazy_static::lazy_static;
 use models::revision::LocalRevision;
 use patch_info::PatchInfo;
 use routes::{file, handle_error, revisions};
@@ -10,6 +9,7 @@ use std::{
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     num::NonZeroUsize,
     path::PathBuf,
+    sync::LazyLock,
     time::Duration,
 };
 use tokio::{join, net::TcpListener, sync::RwLock, time::sleep};
@@ -26,10 +26,13 @@ pub mod xml_parser;
 const HOST: &str = "patch.us.wizard101.com";
 const PORT: &str = "12500";
 
-lazy_static! {
-    pub static ref REVISIONS: RwLock<HashSet<LocalRevision>> = RwLock::new(HashSet::new());
-    pub static ref ARGS: Args = Args::parse();
-}
+// lazy_static! {
+//     pub static ref REVISIONS: RwLock<HashSet<LocalRevision>> = RwLock::new(HashSet::new());
+//     pub static ref ARGS: Args = Args::parse();
+// }
+
+pub static REVISIONS: LazyLock<RwLock<HashSet<LocalRevision>>> = LazyLock::new(|| RwLock::new(HashSet::new()));
+pub static ARGS: LazyLock<Args> = LazyLock::new(|| Args::parse());
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
