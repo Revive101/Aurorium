@@ -24,7 +24,7 @@ You can contribute in many ways:
 2. **Clone** your fork locally:
 
    ```bash
-   git clone https://github.com/<your-username>/Aurorium.git
+   git clone https://github.com/Revive101/Aurorium.git
    cd Aurorium
    ```
 
