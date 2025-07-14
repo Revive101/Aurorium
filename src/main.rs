@@ -15,7 +15,6 @@ use std::{
 use tokio::{join, net::TcpListener, sync::RwLock, time::sleep};
 use tower::{ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer, timeout::TimeoutLayer};
 
-pub mod errors;
 pub mod fetcher;
 pub mod models;
 pub mod patch_info;
@@ -61,7 +60,7 @@ pub struct Args {
 }
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> anyhow::Result<()> {
     // Initialize all revisions on disk
     LocalRevision::init_all(&ARGS.save_directory).await?;
 

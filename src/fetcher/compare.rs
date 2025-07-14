@@ -1,6 +1,7 @@
+use anyhow::anyhow;
+
 use crate::{
     REVISIONS,
-    errors::RevisionDiffError,
     models::{asset::Asset, revision::LocalRevision},
 };
 use std::collections::HashMap;
@@ -20,12 +21,9 @@ pub struct RevisionDiff {
     pub removed_assets: Vec<Asset>,
 }
 
-pub async fn compare_revisions(
-    new_revision: &LocalRevision,
-    old_revision: Option<LocalRevision>,
-) -> Result<RevisionDiff, RevisionDiffError> {
+pub async fn compare_revisions(new_revision: &LocalRevision, old_revision: Option<LocalRevision>) -> anyhow::Result<RevisionDiff> {
     if new_revision.assets.is_empty() {
-        return Err(RevisionDiffError::NoAssets);
+        return Err(anyhow!("New revision has no assets (failed to parse?)"));
     }
 
     let mut diff = RevisionDiff::default();

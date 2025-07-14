@@ -1,8 +1,8 @@
-use crate::{errors::AssetFetcherError, models::asset::Asset};
+use crate::models::asset::Asset;
 use roxmltree::{Document, Node};
 use std::fmt::Write;
 
-pub fn parse_xml(xml_content: &str) -> Result<(Vec<Asset>, Vec<Asset>), AssetFetcherError> {
+pub fn parse_xml(xml_content: &str) -> anyhow::Result<(Vec<Asset>, Vec<Asset>)> {
     let doc = Document::parse(xml_content)?;
     let root = doc.root_element();
 
@@ -51,7 +51,7 @@ fn extract_record_data(record_node: Node) -> Asset {
 
 // ts looks so ugly like fr 🥀🥀
 ///////////////////////////////////////
-pub async fn sanitize_content(text: &str) -> Result<String, AssetFetcherError> {
+pub async fn sanitize_content(text: &str) -> anyhow::Result<String> {
     println!("Sanitizing XML...");
 
     let doc = Document::parse(text)?;

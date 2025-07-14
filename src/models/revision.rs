@@ -3,6 +3,7 @@ use crate::{
     ARGS, REVISIONS,
     xml_parser::{parse_xml, sanitize_content},
 };
+use anyhow::Context;
 use regex::Regex;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -70,7 +71,7 @@ impl LocalRevision {
         revisions.iter().max_by_key(|rev| rev.revision_number).cloned()
     }
 
-    pub async fn init_all<P>(base_path: P) -> std::io::Result<()>
+    pub async fn init_all<P>(base_path: P) -> anyhow::Result<()>
     where
         P: AsRef<Path> + Copy,
     {
@@ -86,7 +87,9 @@ impl LocalRevision {
                 }
 
                 let name = entry.file_name().to_string_lossy().to_string();
-                let revision = Self::from_name(&name, base_path).await.unwrap();
+                let revision = Self::from_name(&name, base_path)
+                    .await
+                    .with_context(|| format!("Path does not exist: {}", &name))?;
                 revisions.insert(revision);
             }
         }

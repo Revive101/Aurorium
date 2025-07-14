@@ -1,9 +1,9 @@
 use crate::{
-    errors::AssetFetcherError,
     models::asset::{Asset, AssetList},
     patch_info::PatchInfo,
     xml_parser::{parse_xml, sanitize_content},
 };
+use anyhow::Context;
 use futures_util::{
     StreamExt,
     stream::{self},
@@ -46,12 +46,17 @@ impl AssetFetcher {
         }
     }
 
-    pub async fn fetch_index(&mut self) -> Result<&mut Self, AssetFetcherError> {
+    pub async fn fetch_index(&mut self) -> anyhow::Result<&mut Self> {
         println!("Fetching LatestFileList...");
         // Fetches the BIN version of `LatestFileList`
         let bin_path = self.save_directory.join("LatestFileList.bin");
         if !bin_path.exists() {
-            let response = self.client.get(&self.list_file_url).send().await?;
+            let response = self
+                .client
+                .get(&self.list_file_url)
+                .send()
+                .await
+                .with_context(|| format!("Failed to fetch LatestFileList from: {}", self.list_file_url))?;
             Self::write_to_file_chunked(&bin_path, response).await?;
         }
 
@@ -59,19 +64,19 @@ impl AssetFetcher {
         let xml_url = self.list_file_url.replace(".bin", ".xml");
         let xml_path = self.save_directory.join("LatestFileList.xml");
 
-        self.process_xml(&xml_url, &xml_path).await?;
+        self.process_xml(&xml_url, &xml_path).await.context("Failed to process XML file")?;
 
         Ok(self)
     }
 
-    async fn process_xml(&mut self, url: &str, save_path: &PathBuf) -> Result<(), AssetFetcherError> {
+    async fn process_xml(&mut self, url: &str, save_path: &PathBuf) -> anyhow::Result<()> {
         println!("Processing LatestFileList.xml...");
 
         let response = self.client.get(url).send().await?;
         let xml_text = response.text().await.unwrap_or_default();
-        let sanitized_content = sanitize_content(&xml_text).await?;
+        let sanitized_content = sanitize_content(&xml_text).await.context("Failed to sanitize XML content")?;
 
-        let (wads, utils) = parse_xml(&sanitized_content)?;
+        let (wads, utils) = parse_xml(&sanitized_content).context("Failed to parse XML content")?;
         self.assets.wads = wads;
         self.assets.utils = utils;
 
