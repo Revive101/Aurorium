@@ -3,7 +3,7 @@ use crate::{
     utils::{Endianness, hex_decode},
 };
 use regex::Regex;
-use std::{io::Cursor, net::ToSocketAddrs};
+use std::io::Cursor;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -46,9 +46,7 @@ pub struct PatchInfo {
 
 impl PatchInfo {
     pub async fn fetch_latest(host: &str, port: &str) -> Result<Self, PatchInfoError> {
-        let mut ip = format!("{host}:{port}").to_socket_addrs()?;
-
-        let mut stream = TcpStream::connect(&ip.next().ok_or(PatchInfoError::AddrResolve)?).await?;
+        let mut stream = TcpStream::connect(format!("{host}:{port}")).await?;
         let mut buffer = [0u8; BUFFER_SIZE];
 
         // read initial offer
@@ -141,9 +139,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_parse_revision_valid() {
-        let url = "http://versionak.us.wizard101.com/WizPatcher/V_r774907.Wizard_1_570/Windows/LatestFileList.bin";
+        let url = "http://versionak.us.wizard101.com/WizPatcher/V_r778979.Wizard_1_580_0_Live/Windows/LatestFileList.bin";
         let result = PatchInfo::parse_revision(url).unwrap();
 
-        assert_eq!(result, "V_r774907.Wizard_1_570");
+        assert_eq!(result, "V_r778979.Wizard_1_580_0_Live");
     }
 }
