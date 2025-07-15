@@ -89,8 +89,6 @@ impl AssetFetcher {
 
     // This function starts `n` parallel tasks to fetch multiple files
     pub async fn fetch_files(&self, file_list: Vec<Asset>) {
-        println!("Fetching files...");
-
         let multi_pb = MultiProgress::new();
 
         let main_style = ProgressStyle::with_template("{spinner:.blue} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len}")

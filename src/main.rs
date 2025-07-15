@@ -101,12 +101,12 @@ async fn main() -> anyhow::Result<()> {
                 REVISIONS.write().await.insert(new_rev.clone());
 
                 if !compared.new_assets.is_empty() {
-                    println!("[INFO] fetching new assets...");
+                    println!("[INFO] fetching {} new assets...", compared.new_assets.len());
                     asset_fetcher.fetch_files(compared.new_assets.clone()).await;
                 }
 
                 if !compared.changed_assets.is_empty() {
-                    println!("[INFO] fetching changed assets...");
+                    println!("[INFO] fetching {} changed assets...", compared.changed_assets.len());
                     asset_fetcher.fetch_files(compared.changed_assets.clone()).await;
                 }
 
