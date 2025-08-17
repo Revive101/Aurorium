@@ -110,7 +110,7 @@ impl LocalRevision {
 
         for rev in revisions {
             for asset in rev.assets.all() {
-                if asset.crc == local_asset.crc && asset.size == local_asset.size {
+                if asset.crc == local_asset.crc {
                     return Some(rev.name);
                 }
             }
