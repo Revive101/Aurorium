@@ -66,7 +66,7 @@ pub async fn compare_revisions(new_revision: &LocalRevision, old_revision: Optio
     for asset in new_revision.assets.all() {
         if let Some(old_asset) = old_asset_map.get(&asset.filename) {
             // Asset exists in both revisions
-            if asset.crc == old_asset.crc && asset.size == old_asset.size {
+            if asset.crc == old_asset.crc {
                 diff.unchanged_assets.push(asset.clone());
             } else {
                 diff.changed_assets.push(asset.clone());
