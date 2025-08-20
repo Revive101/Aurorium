@@ -1,6 +1,9 @@
 [package]
+authors = ["Phill030"]
+homepage = "https://phill030.de/projects/aurorium"
+license-file = "LICENSE.md"
 name = "aurorium"
-version = "3.0.1"
+version = "4.0.0"
 edition = "2024"
 
 [dependencies]
