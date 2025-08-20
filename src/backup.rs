@@ -7,7 +7,7 @@ use tokio::{
     io::AsyncWriteExt,
 };
 
-use crate::ARGS;
+use crate::{ARGS, models::revision::LocalRevision};
 
 pub struct BackupClient;
 
@@ -22,6 +22,7 @@ impl BackupClient {
                 Ok(eventsource_client::SSE::Event(ev)) => {
                     if let Ok(files) = serde_json::from_str(&ev.data) {
                         Self::backup(files, mirror_host).await;
+                        LocalRevision::init_all(&ARGS.save_directory).await.unwrap();
                     }
                 }
                 Ok(eventsource_client::SSE::Connected(_)) => {

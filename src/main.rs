@@ -124,7 +124,6 @@ async fn main() -> anyhow::Result<()> {
     let revision_checker = tokio::spawn(async move {
         if let Some(mirror_host) = ARGS.mirror_host {
             BackupClient::new(mirror_host).await;
-            LocalRevision::init_all(&ARGS.save_directory).await.unwrap();
             return;
         }
 
