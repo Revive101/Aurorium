@@ -1,10 +1,11 @@
 use eventsource_client::{Client, ClientBuilder};
 use futures_util::{StreamExt, stream};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 use tokio::{
     fs::{File, create_dir_all},
     io::AsyncWriteExt,
+    time::sleep,
 };
 
 use crate::{ARGS, models::revision::LocalRevision};
@@ -29,7 +30,10 @@ impl BackupClient {
                     println!("Connected to host!");
                 }
                 Ok(eventsource_client::SSE::Comment(_)) => (),
-                Err(e) => eprintln!("Error receiving event: {:?}", e),
+                Err(e) => {
+                    eprintln!("Error receiving event: {:?}", e);
+                    sleep(Duration::from_secs(10)).await;
+                }
             }
         }
     }
