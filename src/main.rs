@@ -163,6 +163,7 @@ async fn main() -> anyhow::Result<()> {
                 });
 
                 backup_files().await;
+                LocalRevision::init_all(&ARGS.save_directory).await.unwrap();
             }
 
             sleep(Duration::from_secs(ARGS.fetch_interval)).await;
