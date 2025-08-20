@@ -174,7 +174,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn backup_files() {
-    let mut file_names = Vec::new();
+    let mut collected_files = Vec::new();
 
     for revision in REVISIONS.read().await.iter().cloned() {
         let mut stack = vec![ARGS.save_directory.join(&revision.name)];
@@ -191,7 +191,7 @@ async fn backup_files() {
                             .replace('\\', "/");
 
                         if entry_path.is_file() {
-                            file_names.push(relative_path);
+                            collected_files.push(relative_path);
                         } else {
                             stack.push(entry_path);
                         }
@@ -202,5 +202,5 @@ async fn backup_files() {
     }
 
     let mut backup_files = BACKUP_FILES.write().await;
-    *backup_files = file_names;
+    *backup_files = collected_files;
 }
