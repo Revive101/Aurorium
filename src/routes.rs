@@ -105,19 +105,11 @@ pub async fn backup_sse(ConnectionAddr(addr): ConnectionAddr) -> impl IntoRespon
         return Err((StatusCode::FORBIDDEN, "IP address not allowed").into_response());
     }
 
-    let initial = futures_util::stream::once(async {
-        let files = BACKUP_FILES.read().await.clone();
-        Ok::<_, Infallible>(Event::default().data(json!(files).to_string()))
-    });
-
-    let periodic =
+    let stream =
         IntervalStream::new(tokio::time::interval(std::time::Duration::from_secs(ARGS.broadcast_interval))).then(move |_| async move {
             let files = BACKUP_FILES.read().await.clone();
             Ok::<_, Infallible>(Event::default().data(json!(files).to_string()))
         });
-
-    // send immediately once, then periodically
-    let stream = initial.chain(periodic);
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
