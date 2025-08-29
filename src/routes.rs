@@ -10,7 +10,12 @@ use axum::{
 };
 use reqwest::{StatusCode, header};
 use serde_json::json;
-use std::{convert::Infallible, net::Ipv4Addr};
+use std::{
+    convert::Infallible,
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::LazyLock,
+};
+use tokio::{sync::RwLock, time::Instant};
 use tokio_stream::{StreamExt, wrappers::IntervalStream};
 use tokio_util::io::ReaderStream;
 
@@ -112,4 +117,20 @@ pub async fn backup_sse(ConnectionAddr(addr): ConnectionAddr) -> impl IntoRespon
         });
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+// Server discovery
+
+pub struct BackupNode {
+    pub addr: SocketAddrV4,
+    pub last_seen: Instant,
+}
+pub static BACKUP_NODES: LazyLock<RwLock<Vec<BackupNode>>> = LazyLock::new(|| RwLock::new(Vec::new()));
+
+pub async fn discover(ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+    todo!()
+}
+
+pub async fn heartbeat(ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
+    todo!()
 }

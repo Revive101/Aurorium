@@ -1,8 +1,12 @@
 use crate::{
     backup::BackupClient,
-    routes::{backup_sse, mirror_file},
+    routes::{backup_sse, discover, heartbeat, mirror_file},
 };
-use axum::{Router, error_handling::HandleErrorLayer, routing::get};
+use axum::{
+    Router,
+    error_handling::HandleErrorLayer,
+    routing::{get, patch},
+};
 use clap::Parser;
 use fetcher::{client::AssetFetcher, compare::compare_revisions};
 use models::revision::LocalRevision;
@@ -111,7 +115,9 @@ async fn main() -> anyhow::Result<()> {
         if !ARGS.mirror_ips.is_empty() {
             router = router
                 .route("/mirror", get(backup_sse))
-                .route("/mirror/files/{revision}/{*file_path}", get(mirror_file));
+                .route("/mirror/files/{revision}/{*file_path}", get(mirror_file))
+                .route("/discover", get(discover))
+                .route("/heartbeat", patch(heartbeat));
         }
 
         let listener = TcpListener::bind(&ARGS.endpoint).await.unwrap();
