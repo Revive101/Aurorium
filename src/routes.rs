@@ -13,7 +13,12 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
     println!("{addr} connected to /{revision}/{file_path}");
 
     if let Some(revision_for_asset) = LocalRevision::find_revision_for_asset(revision, &file_path).await {
-        let path = ARGS.save_directory.join(revision_for_asset).join(file_path);
+        let path = std::env::current_dir()
+            .unwrap()
+            .join(&ARGS.save_directory)
+            .join(revision_for_asset)
+            .join(file_path);
+
         let Ok(file) = tokio::fs::File::open(&path).await else {
             return Err((StatusCode::NOT_FOUND, format!("File not found: {path:?}")).into_response());
         };
