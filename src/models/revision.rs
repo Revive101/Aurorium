@@ -106,12 +106,13 @@ impl LocalRevision {
         let local_asset = local_revision.assets.find_by_name(asset_name)?;
 
         let revisions = REVISIONS.read().await.clone();
-        revisions.iter().collect::<Vec<_>>().sort_by_key(|r| r.revision_number);
+        let mut sorted_revisions = revisions.iter().collect::<Vec<_>>();
+        sorted_revisions.sort_by_key(|r| r.revision_number);
 
-        for rev in revisions {
+        for rev in sorted_revisions {
             for asset in rev.assets.all() {
                 if asset.crc == local_asset.crc && asset.size == local_asset.size {
-                    return Some(rev.name);
+                    return Some(rev.name.clone());
                 }
             }
         }
@@ -133,6 +134,7 @@ impl LocalRevision {
         let path = path.join("LatestFileList.xml");
 
         if !path.exists() {
+            println!("Warning: LatestFileList.xml not found at {path:?}, skipping...");
             return AssetList::default();
         }
 
