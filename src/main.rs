@@ -115,7 +115,7 @@ async fn revision_checker() -> anyhow::Result<()> {
         let assets = fetcher.assets.clone();
         let new_revision =
             LocalRevision::new(&patch_info.revision, &ARGS.save_directory, assets).context("Failed to create local revision")?;
-        let latest_revision = LocalRevision::newest().await;
+        let latest_revision = LocalRevision::latest().await;
 
         if let Ok(diff) = compare_revisions(&new_revision, latest_revision).await {
             println!("[INFO] Revision found: {}", new_revision.name);

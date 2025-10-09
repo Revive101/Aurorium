@@ -63,7 +63,7 @@ impl LocalRevision {
         None
     }
 
-    pub async fn newest() -> Option<Self> {
+    pub async fn latest() -> Option<Self> {
         let revisions = REVISIONS.read().await;
         revisions
             .iter()
