@@ -1,1 +1,7 @@
+chain_width = 40
 max_width = 140
+use_field_init_shorthand = true
+chain_indent = "Block"
+blank_lines_upper_bound = 4
+condense_wildcard_suffixes = true
+fn_single_line = true
