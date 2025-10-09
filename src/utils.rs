@@ -40,7 +40,11 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // First try to get X-Forwarded-For header
-        if let Some(forwarded_for) = parts.headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()) {
+        if let Some(forwarded_for) = parts
+            .headers
+            .get("X-Forwarded-For")
+            .and_then(|value| value.to_str().ok())
+        {
             return Ok(ConnectionAddr(forwarded_for.to_string()));
         }
 

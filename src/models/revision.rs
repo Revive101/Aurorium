@@ -1,8 +1,5 @@
 use super::asset::AssetList;
-use crate::{
-    ARGS, REVISIONS,
-    xml_parser::{parse_xml, sanitize_content},
-};
+use crate::{ARGS, REVISIONS, xml_parser::parse_xml};
 use anyhow::Context;
 use regex::Regex;
 use serde::Serialize;
@@ -68,7 +65,10 @@ impl LocalRevision {
 
     pub async fn newest() -> Option<Self> {
         let revisions = REVISIONS.read().await;
-        revisions.iter().max_by_key(|rev| rev.revision_number).cloned()
+        revisions
+            .iter()
+            .max_by_key(|rev| rev.revision_number)
+            .cloned()
     }
 
     pub async fn init_all<P>(base_path: P) -> anyhow::Result<()>
@@ -86,7 +86,10 @@ impl LocalRevision {
                     continue;
                 }
 
-                let name = entry.file_name().to_string_lossy().to_string();
+                let name = entry
+                    .file_name()
+                    .to_string_lossy()
+                    .to_string();
                 let revision = Self::from_name(&name, base_path)
                     .await
                     .with_context(|| format!("Path does not exist: {}", &name))?;
@@ -103,7 +106,9 @@ impl LocalRevision {
         }
 
         let local_revision = Self::from_name(&revision, &ARGS.save_directory).await?;
-        let local_asset = local_revision.assets.find_by_name(asset_name)?;
+        let local_asset = local_revision
+            .assets
+            .find_by_name(asset_name)?;
 
         let revisions = REVISIONS.read().await.clone();
         let mut sorted_revisions = revisions.iter().collect::<Vec<_>>();
@@ -125,7 +130,11 @@ impl LocalRevision {
 
         // Extract revision number using regex
         let cap = revision_regex.captures(name)?;
-        let revision_number = cap.get(1)?.as_str().parse::<u64>().ok()?;
+        let revision_number = cap
+            .get(1)?
+            .as_str()
+            .parse::<u64>()
+            .ok()?;
 
         Some(revision_number)
     }
@@ -140,7 +149,7 @@ impl LocalRevision {
 
         let mut list = AssetList::default();
         let xml_content = fs::read_to_string(path).await.unwrap();
-        let (wads, utils) = parse_xml(&sanitize_content(&xml_content).await.unwrap()).unwrap();
+        let (wads, utils) = parse_xml(&xml_content).unwrap();
 
         list.wads = wads;
         list.utils = utils;

@@ -10,7 +10,10 @@ pub fn parse_xml(xml_content: &str) -> anyhow::Result<(Vec<Asset>, Vec<Asset>)> 
 
     for node in root.children().filter(Node::is_element) {
         // Process each RECORD under the zone
-        for inner_node in node.children().filter(|n| n.is_element() && n.tag_name().name() == "RECORD") {
+        for inner_node in node
+            .children()
+            .filter(|n| n.is_element() && n.tag_name().name() == "RECORD")
+        {
             let record = extract_record_data(inner_node);
             records.push(record);
         }
@@ -20,7 +23,9 @@ pub fn parse_xml(xml_content: &str) -> anyhow::Result<(Vec<Asset>, Vec<Asset>)> 
         println!("Found {} records", records.len());
     });
 
-    let (wads, utils) = records.into_iter().partition(|f| f.filename.ends_with(".wad"));
+    let (wads, utils) = records
+        .into_iter()
+        .partition(|f| f.filename.ends_with(".wad"));
 
     Ok((wads, utils))
 }
@@ -29,13 +34,15 @@ fn extract_record_data(record_node: Node) -> Asset {
     let mut asset = Asset::default();
 
     // Map field names to their respective struct fields
-    for child in record_node.children().filter(Node::is_element) {
+    for child in record_node
+        .children()
+        .filter(Node::is_element)
+    {
         let tag_name = child.tag_name().name();
 
         let text = child.text().unwrap_or("").trim();
         match tag_name {
             "SrcFileName" => asset.filename = text.to_string(),
-            // "TarFileName" => record.tar_filename = text.to_string(),
             "FileType" => asset.file_type = text.to_string(),
             "Size" => asset.size = text.parse().unwrap_or(0),
             "HeaderSize" => asset.header_size = text.parse().unwrap_or(0),

@@ -23,8 +23,16 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
             return Err((StatusCode::NOT_FOUND, format!("File not found: {path:?}")).into_response());
         };
 
-        let file_length = file.metadata().await.map(|meta| meta.len()).unwrap_or(0).to_string();
-        let file_name = path.file_name().unwrap().to_string_lossy();
+        let file_length = file
+            .metadata()
+            .await
+            .map(|meta| meta.len())
+            .unwrap_or(0)
+            .to_string();
+        let file_name = path
+            .file_name()
+            .unwrap()
+            .to_string_lossy();
         let header_content = format!("attachment; filename=\"{file_name}\"");
         let headers = AppendHeaders([
             (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
@@ -44,7 +52,12 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
 pub async fn revisions(ConnectionAddr(addr): ConnectionAddr) -> impl IntoResponse {
     println!("{addr} connected to /revisions");
 
-    let revisions = REVISIONS.read().await.iter().map(|r| r.name.clone()).collect::<Vec<_>>();
+    let revisions = REVISIONS
+        .read()
+        .await
+        .iter()
+        .map(|r| r.name.clone())
+        .collect::<Vec<_>>();
     let headers = AppendHeaders([(header::CONTENT_TYPE, "application/json; charset=utf-8")]);
 
     (headers, json!(*revisions).to_string()).into_response()

@@ -30,7 +30,11 @@ pub async fn compare_revisions(new_revision: &LocalRevision, old_revision: Optio
 
     // If there's no old asset list, all assets are new
     let Some(mut old_revision) = old_revision else {
-        diff.new_assets = new_revision.assets.all().cloned().collect();
+        diff.new_assets = new_revision
+            .assets
+            .all()
+            .cloned()
+            .collect();
         return Ok(diff);
     };
 
@@ -44,7 +48,11 @@ pub async fn compare_revisions(new_revision: &LocalRevision, old_revision: Optio
         let updated_revision = REVISIONS.read().await.clone();
 
         if updated_revision.len() == 1 {
-            diff.new_assets = new_revision.assets.all().cloned().collect();
+            diff.new_assets = new_revision
+                .assets
+                .all()
+                .cloned()
+                .collect();
             return Ok(diff);
         }
 
@@ -67,7 +75,8 @@ pub async fn compare_revisions(new_revision: &LocalRevision, old_revision: Optio
         if let Some(old_asset) = old_asset_map.get(&asset.filename) {
             // Asset exists in both revisions
             if asset.crc == old_asset.crc && asset.size == old_asset.size {
-                diff.unchanged_assets.push(asset.clone());
+                diff.unchanged_assets
+                    .push(asset.clone());
             } else {
                 diff.changed_assets.push(asset.clone());
             }

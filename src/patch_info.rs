@@ -23,7 +23,10 @@ impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
     const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
 
     async fn read_bytestring(&mut self) -> anyhow::Result<String> {
-        let len = self.read_u16_le().await.context("Failed to read bytestring length")?;
+        let len = self
+            .read_u16_le()
+            .await
+            .context("Failed to read bytestring length")?;
         let mut buffer = vec![0u8; len as usize];
         tokio::io::AsyncReadExt::read_exact(self, &mut buffer)
             .await
@@ -32,7 +35,10 @@ impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
     }
 
     async fn verify_food_header(&mut self) -> anyhow::Result<bool> {
-        let food_header = self.read_u16_le().await.context("Failed to read FOOD header")?;
+        let food_header = self
+            .read_u16_le()
+            .await
+            .context("Failed to read FOOD header")?;
         Ok(food_header.to_le_bytes() == Self::FOOD_HEADER)
     }
 }
@@ -52,7 +58,10 @@ impl PatchInfo {
         let mut buffer = [0u8; BUFFER_SIZE];
 
         // read initial offer
-        let bytes_read = stream.read(&mut buffer).await.context("Failed to read initial offer from server")?;
+        let bytes_read = stream
+            .read(&mut buffer)
+            .await
+            .context("Failed to read initial offer from server")?;
         if bytes_read == 0 {
             return Err(anyhow!("Server closed connection unexpectedly"));
         }
@@ -60,15 +69,24 @@ impl PatchInfo {
         // Send session accept
         let accept_bytes = hex_decode(SESSION_ACCEPT, &Endianness::Little).ok_or_else(|| anyhow!("Failed to parse hex string to bytes"))?;
 
-        stream.write_all(&accept_bytes).await.context("Failed to send session accept")?;
+        stream
+            .write_all(&accept_bytes)
+            .await
+            .context("Failed to send session accept")?;
 
         // Read server response
-        let bytes_read = stream.read(&mut buffer).await.context("Failed to read server response")?;
+        let bytes_read = stream
+            .read(&mut buffer)
+            .await
+            .context("Failed to read server response")?;
         if bytes_read == 0 {
             return Err(anyhow!("Server closed connection after session accept"));
         }
 
-        stream.shutdown().await.context("Failed to shutdown connection")?;
+        stream
+            .shutdown()
+            .await
+            .context("Failed to shutdown connection")?;
 
         Self::parse_response(&buffer).await
     }
@@ -81,8 +99,14 @@ impl PatchInfo {
         }
 
         // Skip unused fields
-        let _content_length = cursor.read_u16_le().await.context("Failed to read content length")?;
-        let _ = cursor.read_u32_le().await.context("Failed to read padding field")?;
+        let _content_length = cursor
+            .read_u16_le()
+            .await
+            .context("Failed to read content length")?;
+        let _ = cursor
+            .read_u32_le()
+            .await
+            .context("Failed to read padding field")?;
         /*
             isControl u8
             opCode u8
@@ -90,31 +114,55 @@ impl PatchInfo {
         */
 
         // Verify protocol headers
-        let service_id = cursor.read_u8().await.context("Failed to read serviceID")?;
-        let message_id = cursor.read_u8().await.context("Failed to read messageID")?;
+        let service_id = cursor
+            .read_u8()
+            .await
+            .context("Failed to read serviceID")?;
+        let message_id = cursor
+            .read_u8()
+            .await
+            .context("Failed to read messageID")?;
 
         if service_id != SERVICE_ID || message_id != MESSAGE_ID {
             return Err(anyhow!("Expected SERVICE_ID=8 & MESSAGE_ID=2 but got {service_id} & {message_id}"));
         }
 
-        let _dml_length = cursor.read_u16_le().await.context("Failed to read DML length")?;
-        let _latest_version = cursor.read_u32_le().await.context("Failed to read latest version")?;
-        let _list_file_name = cursor.read_bytestring().await.context("Failed to read list file name")?;
-        let _ = cursor.read_u128_le().await.context("Failed to read file metadata")?;
+        let _dml_length = cursor
+            .read_u16_le()
+            .await
+            .context("Failed to read DML length")?;
+        let _latest_version = cursor
+            .read_u32_le()
+            .await
+            .context("Failed to read latest version")?;
+        let _list_file_name = cursor
+            .read_bytestring()
+            .await
+            .context("Failed to read list file name")?;
+        let _ = cursor
+            .read_u128_le()
+            .await
+            .context("Failed to read file metadata")?;
         /*
             ListFileType u32
             ListFileTime u32
             ListFileSize u32
             ListFileCRC  u32
         */
-        let list_file_url = cursor.read_bytestring().await.context("Failed to read list file URL")?;
-        let url_prefix = cursor.read_bytestring().await.context("Failed to read URL prefix")?;
+        let list_file_url = cursor
+            .read_bytestring()
+            .await
+            .context("Failed to read list file URL")?;
+        let url_prefix = cursor
+            .read_bytestring()
+            .await
+            .context("Failed to read URL prefix")?;
 
         let revision = Self::parse_revision(&list_file_url).context("Failed to parse revision from URL")?;
         Ok(PatchInfo {
             list_file_url: list_file_url.clone(),
             url_prefix,
-            revision: revision,
+            revision,
         })
     }
 
@@ -138,7 +186,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection() {
-        let patch_info = PatchInfo::fetch_latest(HOST, PORT).await.unwrap();
+        let patch_info = PatchInfo::fetch_latest(HOST, PORT)
+            .await
+            .unwrap();
         assert!(!patch_info.list_file_url.is_empty(), "List file URL should not be empty");
         assert!(!patch_info.url_prefix.is_empty(), "URL prefix should not be empty");
         assert!(!patch_info.revision.is_empty(), "Revision should not be empty");

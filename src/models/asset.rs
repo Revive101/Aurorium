@@ -23,12 +23,15 @@ pub struct AssetList {
 impl AssetList {
     /// Returns a combined list of all assets
     pub fn all(&self) -> Chain<Iter<'_, Asset>, Iter<'_, Asset>> {
-        self.wads.iter().chain(self.utils.iter())
+        self.wads
+            .iter()
+            .chain(self.utils.iter())
     }
 
     #[must_use]
     pub fn find_by_name(&self, name: &str) -> Option<&Asset> {
-        self.all().find(|asset| asset.filename == name)
+        self.all()
+            .find(|asset| asset.filename == name)
     }
 
     #[must_use]

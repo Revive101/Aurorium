@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::{Router, error_handling::HandleErrorLayer, routing::get};
 use clap::Parser;
 use fetcher::{client::AssetFetcher, compare::compare_revisions};
@@ -12,7 +13,7 @@ use std::{
     sync::LazyLock,
     time::Duration,
 };
-use tokio::{join, net::TcpListener, sync::RwLock, time::sleep};
+use tokio::{net::TcpListener, sync::RwLock, time::sleep};
 use tower::{ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer, timeout::TimeoutLayer};
 
 pub mod fetcher;
@@ -22,8 +23,8 @@ mod routes;
 pub mod utils;
 pub mod xml_parser;
 
-const HOST: &str = "patch.us.wizard101.com";
-const PORT: &str = "12500";
+const DEFAULT: &str = "patch.us.wizard101.com";
+const DEFAULT_PORT: &str = "12500";
 
 pub static REVISIONS: LazyLock<RwLock<HashSet<LocalRevision>>> = LazyLock::new(|| RwLock::new(HashSet::new()));
 pub static ARGS: LazyLock<Args> = LazyLock::new(|| Args::parse());
@@ -40,11 +41,11 @@ pub struct Args {
     #[arg(short, long, env = "SAVE_DIRECTORY", default_value = "data")]
     save_directory: PathBuf,
 
-    #[arg(long, env = "HOST", default_value = HOST)]
-    host: String,
+    #[arg(long, env = "HOST", default_value = DEFAULT)]
+    patch_host: String,
 
-    #[arg(long, env = "PORT", default_value = PORT)]
-    port: String,
+    #[arg(long, env = "PORT", default_value = DEFAULT_PORT)]
+    patch_port: String,
 
     #[arg(short, long, default_value_t = 60 * 60 * 8)]
     fetch_interval: u64,
@@ -64,67 +65,90 @@ async fn main() -> anyhow::Result<()> {
     // Initialize all revisions on disk
     LocalRevision::init_all(&ARGS.save_directory).await?;
 
-    // Start file server
-    let file_serving = tokio::spawn(async move {
-        let router = Router::new()
-            .route("/{revision}/{*file_path}", get(file))
-            .route("/revisions", get(revisions))
-            .layer(
-                ServiceBuilder::new()
-                    .layer(HandleErrorLayer::new(handle_error))
-                    .layer(BufferLayer::new(1024))
-                    .layer(RateLimitLayer::new(ARGS.max_requests, Duration::from_secs(ARGS.reset_interval)))
-                    .layer(TimeoutLayer::new(Duration::from_secs(ARGS.timeout))),
-            );
+    let server_handle = tokio::spawn(run_file_server());
+    let checker_handle = tokio::spawn(revision_checker());
 
-        let listener = TcpListener::bind(&ARGS.endpoint).await.unwrap();
-        axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>())
+    // Wait for both tasks and handle errors
+    let (server_result, checker_result) = tokio::join!(server_handle, checker_handle);
+
+    // Check for task panics or errors
+    server_result.context("File server task panicked")??;
+    checker_result.context("Revision checker task panicked")??;
+
+    Ok(())
+}
+
+async fn run_file_server() -> anyhow::Result<()> {
+    let app = Router::new()
+        .route("/{revision}/{*file_path}", get(file))
+        .route("/revisions", get(revisions))
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_error))
+                .layer(BufferLayer::new(1024))
+                .layer(RateLimitLayer::new(ARGS.max_requests, Duration::from_secs(ARGS.reset_interval)))
+                .layer(TimeoutLayer::new(Duration::from_secs(ARGS.timeout))),
+        );
+
+    let listener = TcpListener::bind(&ARGS.endpoint)
+        .await
+        .context(format!("Failed to bind to {}", ARGS.endpoint))?;
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .context("File server failed")?;
+
+    Ok(())
+}
+
+async fn revision_checker() -> anyhow::Result<()> {
+    loop {
+        let patch_info = PatchInfo::fetch_latest(&ARGS.patch_host, &ARGS.patch_port)
             .await
-            .unwrap();
-    });
+            .context("Failed to fetch latest patch info")?;
 
-    // Periodically check for new revisions
-    let revision_checker = tokio::spawn(async move {
-        loop {
-            let patch_info = PatchInfo::fetch_latest(&ARGS.host, &ARGS.port).await.unwrap();
+        let mut fetcher = AssetFetcher::new(&patch_info, ARGS.concurrent_downloads, &ARGS.save_directory).unwrap();
+        fetcher
+            .fetch_manifest()
+            .await
+            .context("Failed to fetch and process manifest")?;
 
-            let mut asset_fetcher = AssetFetcher::new(&patch_info, ARGS.concurrent_downloads, &ARGS.save_directory);
-            asset_fetcher.fetch_index().await.unwrap();
+        let assets = fetcher.assets.clone();
+        let new_revision =
+            LocalRevision::new(&patch_info.revision, &ARGS.save_directory, assets).context("Failed to create local revision")?;
+        let latest_revision = LocalRevision::newest().await;
 
-            let assets = asset_fetcher.assets.clone();
-            let new_rev = LocalRevision::new(&patch_info.revision, &ARGS.save_directory, assets).unwrap();
+        if let Ok(diff) = compare_revisions(&new_revision, latest_revision).await {
+            println!("[INFO] Revision found: {}", new_revision.name);
+            REVISIONS
+                .write()
+                .await
+                .insert(new_revision.clone());
 
-            let newest_rev_on_disk = LocalRevision::newest().await;
-
-            if let Ok(compared) = compare_revisions(&new_rev, newest_rev_on_disk).await {
-                println!("[INFO] New revision found: {}", new_rev.name);
-                REVISIONS.write().await.insert(new_rev.clone());
-
-                if !compared.new_assets.is_empty() {
-                    println!("[INFO] fetching {} new assets...", compared.new_assets.len());
-                    asset_fetcher.fetch_files(compared.new_assets.clone()).await;
-                }
-
-                if !compared.changed_assets.is_empty() {
-                    println!("[INFO] fetching {} changed assets...", compared.changed_assets.len());
-                    asset_fetcher.fetch_files(compared.changed_assets.clone()).await;
-                }
-
-                cfg!(debug_assertions).then(|| {
-                    println!(
-                        "New Assets: {}, Removed Assets: {}, Changed Assets: {}, Unchanged Assets: {}",
-                        compared.new_assets.len(),
-                        compared.removed_assets.len(),
-                        compared.changed_assets.len(),
-                        compared.unchanged_assets.len()
-                    );
-                });
+            if !diff.new_assets.is_empty() {
+                println!("[INFO] fetching {} new assets...", diff.new_assets.len());
+                fetcher
+                    .download_assets(diff.new_assets.clone())
+                    .await;
             }
 
-            sleep(Duration::from_secs(ARGS.fetch_interval)).await;
-        }
-    });
+            if !diff.changed_assets.is_empty() {
+                println!("[INFO] fetching {} changed assets...", diff.changed_assets.len());
+                fetcher
+                    .download_assets(diff.changed_assets.clone())
+                    .await;
+            }
 
-    let (_, _) = join!(file_serving, revision_checker);
-    Ok(())
+            cfg!(debug_assertions).then(|| {
+                println!(
+                    "New Assets: {}, Removed Assets: {}, Changed Assets: {}, Unchanged Assets: {}",
+                    diff.new_assets.len(),
+                    diff.removed_assets.len(),
+                    diff.changed_assets.len(),
+                    diff.unchanged_assets.len()
+                );
+            });
+        }
+
+        sleep(Duration::from_secs(ARGS.fetch_interval)).await;
+    }
 }
