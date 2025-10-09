@@ -1,24 +1,19 @@
 [package]
-authors = ["Phill030"]
-homepage = "https://phill030.de/projects/aurorium"
-license-file = "LICENSE.md"
 name = "aurorium"
-version = "4.0.0"
+version = "3.0.2"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.100"
-axum = "0.8.6"
-clap = { version = "4.5.48", features = ["derive", "env"] }
-eventsource-client = "0.15.1"
+anyhow = "1.0.98"
+axum = "0.8.4"
+clap = { version = "4.5.41", features = ["derive", "env"] }
 futures-util = "0.3.31"
 indicatif = "0.18.0"
-regex = "1.11.3"
-reqwest = { version = "0.12.23", features = ["json"] }
-roxmltree = "0.21.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-tokio = { version = "1.47.1", features = ["full"] }
-tokio-stream = "0.1.17"
-tokio-util = { version = "0.7.16", features = ["io-util"] }
+regex = "1.11.1"
+reqwest = { version = "0.12.22", features = ["json"] }
+roxmltree = "0.20.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+tokio = { version = "1.46.1", features = ["full"] }
+tokio-util = { version = "0.7.15", features = ["io-util"] }
 tower = { version = "0.5.2", features = ["buffer", "limit", "timeout"] }

@@ -1,5 +1,8 @@
 use super::asset::AssetList;
-use crate::{ARGS, REVISIONS, xml_parser::parse_xml};
+use crate::{
+    ARGS, REVISIONS,
+    xml_parser::{parse_xml, sanitize_content},
+};
 use anyhow::Context;
 use regex::Regex;
 use serde::Serialize;
@@ -108,8 +111,8 @@ impl LocalRevision {
 
         for rev in sorted_revisions {
             for asset in rev.assets.all() {
-                if asset.crc == local_asset.crc {
-                    return Some(rev.name);
+                if asset.crc == local_asset.crc && asset.size == local_asset.size {
+                    return Some(rev.name.clone());
                 }
             }
         }
@@ -137,7 +140,7 @@ impl LocalRevision {
 
         let mut list = AssetList::default();
         let xml_content = fs::read_to_string(path).await.unwrap();
-        let (wads, utils) = parse_xml(&xml_content).unwrap();
+        let (wads, utils) = parse_xml(&sanitize_content(&xml_content).await.unwrap()).unwrap();
 
         list.wads = wads;
         list.utils = utils;

@@ -45,12 +45,6 @@ These steps help you set up **Aurorium** for development and testing.
 - A code editor like [VS Code](https://code.visualstudio.com/)
 - [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extension
 
-If you're on Linux you'll need to install following packages:
-
-```bash
-sudo apt install build-essential pkg-config libssl-dev
-```
-
 ### 📥 Installation
 
 Clone the repository:
