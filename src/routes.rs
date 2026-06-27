@@ -35,7 +35,7 @@ pub async fn file(Path((revision, file_path)): Path<(String, String)>, Connectio
             .to_string_lossy();
         let header_content = format!("attachment; filename=\"{file_name}\"");
         let headers = AppendHeaders([
-            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CONTENT_TYPE, "application/octet-stream"),
             (header::CONTENT_DISPOSITION, &header_content),
             (header::CONTENT_LENGTH, file_length.as_str()),
         ]);
