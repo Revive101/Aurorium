@@ -1,0 +1,30 @@
+[package]
+name = "aurorium_rework"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.9"
+chrono = "0.4.45"
+miette = { version = "7.6.0", features = ["fancy"] }
+quick-xml = "0.41.0"
+regex = "1.12.4"
+reqwest = "0.13.4"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", features = ["full"] }
+toml = "1.1.2"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = [
+    "chrono",
+    "env-filter",
+    "registry",
+] }
+
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
