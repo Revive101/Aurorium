@@ -137,6 +137,7 @@ impl AssetFetcher {
     where
         P: AsRef<Path>,
     {
+        // Check if parent dir exists, else create it
         if let Some(parent) = path.as_ref().parent() {
             create_dir_all(parent)
                 .await
@@ -155,6 +156,7 @@ impl AssetFetcher {
     where
         P: AsRef<Path>,
     {
+        // Check if parent dir exists, else create it
         if let Some(parent) = path.as_ref().parent() {
             create_dir_all(parent)
                 .await
@@ -166,6 +168,7 @@ impl AssetFetcher {
             .map_err(AssetFetcherError::Io)?;
         let mut writer = BufWriter::with_capacity(128 * 1024, file);
 
+        // Stream response to file in chunks (to avoid loading the entire file into memory)
         while let Some(chunk) = response
             .chunk()
             .await
