@@ -1,4 +1,7 @@
 [package]
+authors = ["Phill030"]
+license-file = "LICENSE.md"
+repository = "https://github.com/Phill030/Aurorium"
 name = "aurorium_rework"
 version = "0.1.0"
 edition = "2024"
