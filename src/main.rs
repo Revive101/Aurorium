@@ -17,6 +17,7 @@ mod config;
 mod fetcher;
 mod revision;
 
+pub mod errors;
 pub mod utils;
 pub mod wizard_patcher;
 pub mod xml_parser;

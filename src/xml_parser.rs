@@ -1,48 +1,7 @@
-use miette::Diagnostic;
 use quick_xml::{Reader, events::Event};
 use std::{fs::File, io::BufReader, path::Path};
-use thiserror::Error;
 
-use crate::revision::asset_list::Asset;
-
-#[derive(Error, Diagnostic, Debug)]
-pub enum XmlParseError {
-    #[error("Failed to open XML file")]
-    #[diagnostic(
-        code(xml_parser::file_open),
-        help(
-            "There was an error while opening the XML file. Please check if the file exists and you have the necessary permissions."
-        )
-    )]
-    FileOpen(#[source] std::io::Error),
-
-    #[error("Failed to read XML file")]
-    #[diagnostic(
-        code(xml_parser::read),
-        help(
-            "There was an error while reading the XML file. Please check if the file is accessible and not corrupted."
-        )
-    )]
-    Read(#[source] quick_xml::Error),
-
-    #[error("Failed to parse integer from XML content")]
-    #[diagnostic(
-        code(xml_parser::parse_int),
-        help(
-            "There was an error while parsing an integer from the XML content. Please check if the XML file is well-formed and contains valid data."
-        )
-    )]
-    Parse(#[from] std::num::ParseIntError),
-
-    #[error("Failed to parse XML content")]
-    #[diagnostic(
-        code(xml_parser::parse),
-        help(
-            "There was an error while parsing the XML content. Please check if the XML file is well-formed and contains valid data."
-        )
-    )]
-    Encoding(#[source] quick_xml::encoding::EncodingError),
-}
+use crate::{errors::XmlParseError, revision::asset_list::Asset};
 
 enum Field {
     Src,

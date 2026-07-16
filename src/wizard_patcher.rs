@@ -1,59 +1,15 @@
-use crate::utils::{Endianness, hex_decode};
-use miette::{Diagnostic, Severity};
+use crate::{
+    errors::WizardPatcherError,
+    utils::{Endianness, hex_decode},
+};
+use miette::Severity;
 use regex::Regex;
 use std::{io::Cursor, sync::LazyLock};
-use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
 use tracing::info;
-
-#[derive(Debug, Error, Diagnostic)]
-pub enum WizardPatcherError {
-    #[error("Failed to connect to the server")]
-    #[diagnostic(
-        code(wizard_patcher::connection_error),
-        help("Check your internet connection and try again.")
-    )]
-    ConnectionError(#[source] std::io::Error),
-
-    #[error("Failed to read from the server")]
-    #[diagnostic(
-        code(wizard_patcher::read_error),
-        help(
-            "There was an unknown error while reading data from the server. Please restart Aurorium or try again later."
-        )
-    )]
-    ReadError(#[source] std::io::Error),
-
-    #[error("Failed to write to the server")]
-    #[diagnostic(
-        code(wizard_patcher::write_error),
-        help(
-            "There was an unknown error while writing data to the server. Please restart Aurorium or try again later."
-        )
-    )]
-    WriteError(#[source] std::io::Error),
-
-    #[error("Failed to shutdown the connection")]
-    #[diagnostic(
-        code(wizard_patcher::shutdown_error),
-        help(
-            "There was an unknown error while shutting down the connection. Please restart Aurorium or try again later."
-        )
-    )]
-    ShutdownError(#[source] std::io::Error),
-
-    #[error("Unexpected end of file while reading response")]
-    #[diagnostic(
-        code(wizard_patcher::unexpected_eof),
-        help(
-            "Encountered an EOF while filling the response buffer. This may indicate a network issue or a problem with Aurorium. Please try again later."
-        )
-    )]
-    UnexpectedEofError(#[source] std::io::Error),
-}
 
 static LIST_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"/(V_[^/]+)/").unwrap());
 

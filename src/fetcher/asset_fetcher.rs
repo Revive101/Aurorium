@@ -1,9 +1,9 @@
 use crate::{
-    revision::asset_list::AssetList, wizard_patcher::WizardPatcher, xml_parser::parse_file_list,
+    errors::AssetFetcherError, revision::asset_list::AssetList, wizard_patcher::WizardPatcher,
+    xml_parser::parse_file_list,
 };
 use futures_util::{StreamExt, stream};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use miette::Diagnostic;
 use reqwest::Client;
 use std::{
     num::NonZeroUsize,
@@ -11,45 +11,11 @@ use std::{
     sync::LazyLock,
     time::Duration,
 };
-use thiserror::Error;
 use tokio::{
     fs::{create_dir_all, try_exists},
     io::{AsyncWriteExt, BufWriter},
 };
 use tracing::{debug, info, instrument, trace, warn};
-
-#[derive(Diagnostic, Error, Debug)]
-pub enum AssetFetcherError {
-    #[error("Failed to create HTTP client")]
-    #[diagnostic(
-        code(asset_fetcher::client_build),
-        help(
-            "There was an error while creating the HTTP client. Please restart Aurorium or try again later."
-        )
-    )]
-    ClientBuild(#[source] reqwest::Error),
-
-    #[error("Failed to create directories")]
-    #[diagnostic(
-        code(asset_fetcher::create_dir),
-        help(
-            "There was an error while creating directories for storing assets. Please check your file system permissions and try again."
-        )
-    )]
-    CreateDir(#[source] std::io::Error),
-
-    #[error("File system I/O error")]
-    #[diagnostic(code(asset_fetcher::io))]
-    Io(#[source] std::io::Error),
-
-    #[error("Failed to fetch LatestFileList")]
-    #[diagnostic(code(asset_fetcher::manifest_fetch))]
-    ManifestFetch(#[source] reqwest::Error),
-
-    #[error("failed to finalize downloaded file")]
-    #[diagnostic(code(asset_fetcher::rename))]
-    Rename(#[source] std::io::Error),
-}
 
 static MAIN_PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template(
@@ -183,6 +149,8 @@ impl AssetFetcher {
                 let url = format!("{url_prefix}/{}", file.file_name);
                 let save_path = save_dir.join(&file.file_name);
 
+                trace!(url = %url, file = %file.file_name, "starting download");
+
                 if save_path.exists() {
                     trace!(file = %file.file_name, "already downloaded, skipping");
                     main_progress.inc(1);
@@ -230,7 +198,9 @@ impl AssetFetcher {
             .collect::<Vec<()>>()
             .await;
 
-        todo!()
+        info!("All downloads completed");
+
+        Ok(())
     }
 
     /// Streams an HTTP response to disk, optionally driving a progress bar.
@@ -241,6 +211,9 @@ impl AssetFetcher {
     /// - The response body cannot be read.
     /// - The file cannot be created or written to.
     /// - The file cannot be renamed to its final name after writing.
+    ///
+    /// # TODO
+    /// Implement resuming downloads by checking for a .part file and continuing from where it left off. (Their server supports range requests, so this should be possible.)
     async fn write_to_file_streamed<P>(
         path: P,
         mut response: reqwest::Response,
@@ -262,7 +235,7 @@ impl AssetFetcher {
         let file = tokio::fs::File::create(&part_path)
             .await
             .map_err(AssetFetcherError::Io)?;
-        let mut writer = BufWriter::with_capacity(128 * 1024, file);
+        let mut writer = BufWriter::with_capacity(128 * 1024, file); // TODO: Let the user configure this buffer size(?)
 
         // Stream response to file in chunks (to avoid loading the entire file into memory)
         let result: miette::Result<()> = async {

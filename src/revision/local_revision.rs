@@ -1,12 +1,7 @@
-use miette::Diagnostic;
 use regex::Regex;
 use std::{path::PathBuf, sync::LazyLock};
-use thiserror::Error;
 
 use crate::revision::asset_list::AssetList;
-
-#[derive(Debug, Error, Diagnostic)]
-pub enum LocalRevisionError {}
 
 static REVISION_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^V_r(\d+)\.Wizard.*$").unwrap());
