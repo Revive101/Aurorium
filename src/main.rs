@@ -35,12 +35,7 @@ async fn main() -> Result<()> {
 
     let state = AppState::new(config);
 
-    let revision_checker = tokio::spawn(async move { state.revision_checker().await });
-    let revision_checker_result = tokio::join!(revision_checker);
-
-    revision_checker_result
-        .0
-        .map_err(|e| miette::miette!("Revision checker task failed: {}", e))??;
+    state.revision_checker().await?;
 
     Ok(())
 }
@@ -125,8 +120,10 @@ impl AppState {
 
             let mut asset_fetcher =
                 AssetFetcher::new(patcher, *concurrent_downloads, save_directory)?;
+
             asset_fetcher.fetch_bin_manifest().await?;
             asset_fetcher.fetch_xml_manifest().await?;
+            asset_fetcher.fetch_assets().await?;
 
             sleep(Duration::from_secs(*fetch_interval)).await;
         }
