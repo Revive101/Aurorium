@@ -12,11 +12,11 @@ chrono = "0.4.45"
 indicatif = "0.18.6"
 miette = { version = "7.6.0", features = ["fancy"] }
 quick-xml = "0.41.0"
-regex = "1.12.4"
+regex = "1.13.1"
 reqwest = "0.13.4"
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.18"
-tokio = { version = "1.52.3", features = ["full"] }
+tokio = { version = "1.52.4", features = ["full"] }
 toml = "1.1.2"
 tracing = "0.1.44"
 tracing-appender = "0.2.5"
