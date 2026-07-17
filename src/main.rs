@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use crate::{
     config::{AppConfig, FetcherConfig, PatchConfig},
-    fetcher::asset_fetcher::AssetFetcher,
+    fetcher::{
+        asset_fetcher::AssetFetcher,
+        manifest_fetcher::{ManifestFetcher, ManifestType},
+    },
     wizard_patcher::WizardPatcher,
 };
 use miette::Result;
@@ -119,11 +122,15 @@ impl AppState {
         loop {
             let patcher = WizardPatcher::check_revision(&host, &port).await?;
 
-            let mut asset_fetcher =
-                AssetFetcher::new(patcher, *concurrent_downloads, save_directory)?;
+            let manifest_patcher = ManifestFetcher::new(patcher.clone(), save_directory)?;
+            manifest_patcher.fetch_manifest(ManifestType::Bin).await?;
+            let assets = manifest_patcher
+                .fetch_manifest(ManifestType::Xml)
+                .await?
+                .unwrap();
 
-            asset_fetcher.fetch_bin_manifest().await?;
-            asset_fetcher.fetch_xml_manifest().await?;
+            let asset_fetcher =
+                AssetFetcher::new(patcher, *concurrent_downloads, save_directory, assets)?;
             asset_fetcher.fetch_assets().await?;
 
             sleep(Duration::from_secs(*fetch_interval)).await;
