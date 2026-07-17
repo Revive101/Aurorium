@@ -59,7 +59,7 @@ impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WizardPatcher {
     pub list_file_url: String,
     pub url_prefix: String,
