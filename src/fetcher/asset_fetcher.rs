@@ -1,6 +1,6 @@
 use crate::{
-    errors::AssetFetcherError, revision::asset_list::AssetList, wizard_patcher::WizardPatcher,
-    xml_parser::parse_file_list,
+    errors::AssetFetcherError, fetcher::fetcher::Fetcher, revision::asset_list::AssetList,
+    wizard_patcher::WizardPatcher,
 };
 use futures_util::{StreamExt, stream};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -10,10 +10,6 @@ use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
     time::Duration,
-};
-use tokio::{
-    fs::{create_dir_all, try_exists},
-    io::{AsyncWriteExt, BufWriter},
 };
 use tracing::{debug, info, instrument, trace, warn};
 
@@ -42,6 +38,7 @@ impl AssetFetcher {
         wizard_patcher: WizardPatcher,
         concurrent_downloads: NonZeroUsize,
         save_directory: P,
+        assets: AssetList,
     ) -> miette::Result<Self>
     where
         P: AsRef<Path>,
@@ -59,63 +56,8 @@ impl AssetFetcher {
             save_directory: save_directory.as_ref().join(&wizard_patcher.revision),
             wizard_patcher,
             concurrent_downloads,
-            assets: AssetList::default(),
+            assets,
         })
-    }
-
-    #[instrument(skip(self))]
-    pub async fn fetch_bin_manifest(&mut self) -> miette::Result<&mut Self> {
-        info!("Fetching LatestFileList.bin...");
-
-        let path = self.save_directory.join("LatestFileList.bin");
-        let file_exists = try_exists(&path).await.map_err(AssetFetcherError::Io)?;
-
-        if !file_exists {
-            let response = self
-                .client
-                .get(&self.wizard_patcher.list_file_url)
-                .send()
-                .await
-                .map_err(AssetFetcherError::ManifestFetch)?;
-
-            Self::write_to_file_streamed(&path, response, None).await?;
-        } else {
-            debug!(path = %path.display(), "BIN manifest already cached, skipping download");
-        }
-
-        Ok(self)
-    }
-
-    pub async fn fetch_xml_manifest(&mut self) -> miette::Result<&mut Self> {
-        info!("Fetching LatestFileList.xml...");
-
-        let path = self.save_directory.join("LatestFileList.xml");
-        let file_exists = try_exists(&path).await.map_err(AssetFetcherError::Io)?;
-        let list_file_url = self.wizard_patcher.list_file_url.replace(".bin", ".xml");
-
-        if !file_exists {
-            let response = self
-                .client
-                .get(&list_file_url)
-                .send()
-                .await
-                .map_err(AssetFetcherError::ManifestFetch)?;
-
-            Self::write_to_file_streamed(&path, response, None).await?;
-        } else {
-            debug!(path = %path.display(), "XML manifest already cached, skipping download");
-        }
-
-        let (wads, utils) = parse_file_list(path).unwrap();
-        debug!(
-            "Parsed {} entries from LatestFileList.xml",
-            wads.len() + utils.len()
-        );
-
-        self.assets.wads = wads;
-        self.assets.utils = utils;
-
-        Ok(self)
     }
 
     #[instrument(skip(self))]
@@ -180,7 +122,6 @@ impl AssetFetcher {
                                 warn!(error = %e, file = %file.file_name, "failed to write file to disk");
                             }
                         }
-
                     },
                     Err(e) => {
                         // TODO: Handle retries (or log failures in a separate list)
@@ -198,84 +139,11 @@ impl AssetFetcher {
             .collect::<Vec<()>>()
             .await;
 
+        multi_progress.clear().unwrap();
         info!("All downloads completed");
 
         Ok(())
     }
-
-    /// Streams an HTTP response to disk, optionally driving a progress bar.
-    ///
-    /// # Panics
-    /// This function will panic if any of the following conditions are met:
-    /// - The file path is invalid.
-    /// - The response body cannot be read.
-    /// - The file cannot be created or written to.
-    /// - The file cannot be renamed to its final name after writing.
-    ///
-    /// # TODO
-    /// Implement resuming downloads by checking for a .part file and continuing from where it left off. (Their server supports range requests, so this should be possible.)
-    async fn write_to_file_streamed<P>(
-        path: P,
-        mut response: reqwest::Response,
-        progress: Option<&ProgressBar>,
-    ) -> miette::Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let final_path = path.as_ref();
-        let part_path = Self::part_path(final_path);
-
-        // Check if parent dir exists, else create it
-        if let Some(parent) = final_path.parent() {
-            create_dir_all(parent)
-                .await
-                .map_err(AssetFetcherError::CreateDir)?;
-        }
-
-        let file = tokio::fs::File::create(&part_path)
-            .await
-            .map_err(AssetFetcherError::Io)?;
-        let mut writer = BufWriter::with_capacity(128 * 1024, file); // TODO: Let the user configure this buffer size(?)
-
-        // Stream response to file in chunks (to avoid loading the entire file into memory)
-        let result: miette::Result<()> = async {
-            while let Some(chunk) = response
-                .chunk()
-                .await
-                .map_err(|e| miette::miette!("Failed to read chunk: {e}"))?
-            {
-                writer
-                    .write_all(&chunk)
-                    .await
-                    .map_err(AssetFetcherError::Io)?;
-
-                if let Some(pb) = progress {
-                    pb.inc(chunk.len() as u64);
-                }
-            }
-
-            writer.flush().await.map_err(AssetFetcherError::Io)?;
-            Ok(())
-        }
-        .await;
-
-        // If there was an error during the download, remove the partial file and return the error
-        if let Err(e) = result {
-            let _ = tokio::fs::remove_file(&part_path).await;
-            return Err(e);
-        }
-
-        // Rename the .part file to the final filename
-        tokio::fs::rename(&part_path, final_path)
-            .await
-            .map_err(AssetFetcherError::Rename)?;
-
-        Ok(())
-    }
-
-    fn part_path(path: &Path) -> PathBuf {
-        let mut part_os = path.as_os_str().to_owned();
-        part_os.push(".part");
-        PathBuf::from(part_os)
-    }
 }
+
+impl Fetcher for AssetFetcher {}

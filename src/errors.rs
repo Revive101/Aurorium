@@ -12,27 +12,6 @@ pub enum AssetFetcherError {
         )
     )]
     ClientBuild(#[source] reqwest::Error),
-
-    #[error("Failed to create directories")]
-    #[diagnostic(
-        code(asset_fetcher::create_dir),
-        help(
-            "There was an error while creating directories for storing assets. Please check your file system permissions and try again."
-        )
-    )]
-    CreateDir(#[source] std::io::Error),
-
-    #[error("File system I/O error")]
-    #[diagnostic(code(asset_fetcher::io))]
-    Io(#[source] std::io::Error),
-
-    #[error("Failed to fetch LatestFileList")]
-    #[diagnostic(code(asset_fetcher::manifest_fetch))]
-    ManifestFetch(#[source] reqwest::Error),
-
-    #[error("failed to finalize downloaded file")]
-    #[diagnostic(code(asset_fetcher::rename))]
-    Rename(#[source] std::io::Error),
 }
 
 // xml_parser.rs
@@ -124,4 +103,46 @@ pub enum WizardPatcherError {
         )
     )]
     UnexpectedEofError(#[source] std::io::Error),
+}
+
+// manifest_fetcher.rs
+#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+pub enum ManifestFetcherError {
+    #[error("File system I/O error")]
+    #[diagnostic(code(asset_fetcher::io))]
+    Io(#[source] std::io::Error),
+
+    #[error("Failed to create HTTP client")]
+    #[diagnostic(
+        code(asset_fetcher::client_build),
+        help(
+            "There was an error while creating the HTTP client. Please restart Aurorium or try again later."
+        )
+    )]
+    ClientBuild(#[source] reqwest::Error),
+}
+
+// fetcher.rs
+#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+pub enum FetcherTraitError {
+    #[error("Failed to fetch {1}")]
+    #[diagnostic(code(asset_fetcher::manifest_fetch))]
+    Fetch(#[source] reqwest::Error, String),
+
+    #[error("File system I/O error")]
+    #[diagnostic(code(asset_fetcher::io))]
+    Io(#[source] std::io::Error),
+
+    #[error("Failed to create directories")]
+    #[diagnostic(
+        code(asset_fetcher::create_dir),
+        help(
+            "There was an error while creating directories. Please check your file system permissions and try again."
+        )
+    )]
+    CreateDir(#[source] std::io::Error),
+
+    #[error("failed to finalize downloaded file")]
+    #[diagnostic(code(asset_fetcher::rename))]
+    Rename(#[source] std::io::Error),
 }

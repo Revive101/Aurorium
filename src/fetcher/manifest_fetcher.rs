@@ -1,0 +1,100 @@
+use crate::{
+    errors::ManifestFetcherError, fetcher::fetcher::Fetcher, revision::asset_list::AssetList,
+    wizard_patcher::WizardPatcher, xml_parser::parse_file_list,
+};
+use reqwest::Client;
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use tokio::fs::try_exists;
+use tracing::{debug, info};
+
+pub enum ManifestType {
+    Bin,
+    Xml,
+}
+
+/// This struct is responsible for fetching the `LatestFileList.bin` and `LatestFileList.xml` from their servers.
+pub struct ManifestFetcher {
+    client: Client,
+    wizard_patcher: WizardPatcher,
+    save_directory: PathBuf,
+}
+
+impl ManifestFetcher {
+    pub fn new<P>(wizard_patcher: WizardPatcher, save_directory: P) -> miette::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let client = Client::builder()
+            .user_agent("KingsIsle Patcher")
+            .tcp_keepalive(Duration::from_secs(60))
+            .timeout(Duration::from_secs(120))
+            .build()
+            .map_err(ManifestFetcherError::ClientBuild)?;
+
+        Ok(Self {
+            client,
+            wizard_patcher: wizard_patcher.clone(),
+            save_directory: save_directory.as_ref().join(wizard_patcher.revision),
+        })
+    }
+
+    pub async fn fetch_manifest(
+        &self,
+        manifest_type: ManifestType,
+    ) -> miette::Result<Option<AssetList>> {
+        match manifest_type {
+            ManifestType::Bin => {
+                self.fetch_bin_manifest().await?;
+                Ok(None)
+            }
+            ManifestType::Xml => {
+                let manifest = self.fetch_xml_manifest().await?;
+                Ok(Some(manifest))
+            }
+        }
+    }
+
+    async fn fetch_bin_manifest(&self) -> miette::Result<()> {
+        let path = self.save_directory.join("LatestFileList.bin");
+        let file_exists = try_exists(&path).await.map_err(ManifestFetcherError::Io)?;
+
+        if !file_exists {
+            info!("Fetching LatestFileList.bin...");
+            let response = Self::fetch(&self.client, &self.wizard_patcher.list_file_url).await?;
+            Self::write_to_file_streamed(&path, response, None).await?;
+            return Ok(());
+        }
+
+        info!(path = %path.display(), "BIN manifest already cached, skipping download");
+        Ok(())
+    }
+
+    async fn fetch_xml_manifest(&self) -> miette::Result<AssetList> {
+        let path = self.save_directory.join("LatestFileList.xml");
+        let file_exists = try_exists(&path).await.map_err(ManifestFetcherError::Io)?;
+        let list_file_url = self.wizard_patcher.list_file_url.replace(".bin", ".xml");
+
+        if !file_exists {
+            info!("Fetching LatestFileList.xml...");
+            let response = Self::fetch(&self.client, &list_file_url).await?;
+            Self::write_to_file_streamed(&path, response, None).await?;
+        }
+
+        info!(path = %path.display(), "XML manifest already cached, skipping download");
+
+        let (wads, utils) = parse_file_list(path).unwrap();
+        debug!(
+            "Parsed {} entries from LatestFileList.xml",
+            wads.len() + utils.len()
+        );
+
+        let list = AssetList { wads, utils };
+
+        Ok(list)
+    }
+}
+
+impl Fetcher for ManifestFetcher {}
