@@ -27,6 +27,7 @@ tracing-subscriber = { version = "0.3.23", features = [
 ] }
 futures-util = "0.3.33"
 rusqlite = { version = "0.40.1", features = ["bundled"] }
+rusqlite_migration = "2.6.0"
 
 
 [profile.release]
