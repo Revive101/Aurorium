@@ -14,9 +14,9 @@ miette = { version = "7.6.0", features = ["fancy"] }
 quick-xml = "0.41.0"
 regex = "1.13.1"
 reqwest = "0.13.4"
-serde = { version = "1.0.228", features = ["derive"] }
-thiserror = "2.0.18"
-tokio = { version = "1.52.4", features = ["full"] }
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.19"
+tokio = { version = "1.53.1", features = ["full"] }
 toml = "1.1.2"
 tracing = "0.1.44"
 tracing-appender = "0.2.5"
@@ -25,7 +25,8 @@ tracing-subscriber = { version = "0.3.23", features = [
     "env-filter",
     "registry",
 ] }
-futures-util = "0.3.32"
+futures-util = "0.3.33"
+rusqlite = { version = "0.40.1", features = ["bundled"] }
 
 
 [profile.release]
