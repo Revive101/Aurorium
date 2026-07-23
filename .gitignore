@@ -2,4 +2,4 @@
 /data
 /logs
 config.toml
-aurorium.db
+aurorium.db*
