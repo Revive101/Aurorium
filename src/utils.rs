@@ -1,3 +1,11 @@
+use std::net::SocketAddr;
+
+use axum::{
+    extract::{ConnectInfo, FromRequestParts},
+    http::request::Parts,
+};
+use reqwest::StatusCode;
+
 pub enum Endianness {
     Little,
     Big,
@@ -21,4 +29,33 @@ pub fn hex_decode(hex_string: &str, endianness: &Endianness) -> Option<Vec<u8>> 
         .collect();
 
     bytes
+}
+
+#[derive(Debug)]
+pub struct ConnectionAddr(pub String);
+
+impl<S> FromRequestParts<S> for ConnectionAddr
+where
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        // First try to get X-Forwarded-For header
+        if let Some(forwarded_for) = parts
+            .headers
+            .get("X-Forwarded-For")
+            .and_then(|value| value.to_str().ok())
+        {
+            return Ok(ConnectionAddr(forwarded_for.to_string()));
+        }
+
+        // If header not found, fall back to connection info
+        let connection_info = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        Ok(ConnectionAddr(connection_info.0.ip().to_string()))
+    }
 }

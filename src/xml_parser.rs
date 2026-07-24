@@ -1,7 +1,6 @@
+use crate::{errors::XmlParseError, revision::Asset};
 use quick_xml::{Reader, events::Event};
 use std::{fs::File, io::BufReader, path::Path};
-
-use crate::{errors::XmlParseError, revision::asset_list::Asset};
 
 enum Field {
     Src,
@@ -13,7 +12,7 @@ enum Field {
     HeaderCrc,
 }
 
-pub fn parse_file_list<P>(path: P) -> miette::Result<(Vec<Asset>, Vec<Asset>)>
+pub fn parse_file_list<P>(path: P) -> miette::Result<Vec<Asset>>
 where
     P: AsRef<Path>,
 {
@@ -96,9 +95,5 @@ where
         buf.clear();
     }
 
-    let (wads, utils) = entries
-        .into_iter()
-        .partition(|f| f.file_name.ends_with(".wad"));
-
-    Ok((wads, utils))
+    Ok(entries)
 }

@@ -1,5 +1,5 @@
 use crate::{
-    errors::AssetFetcherError, fetcher::fetcher::Fetcher, revision::asset_list::AssetList,
+    errors::AssetFetcherError, fetcher::fetcher::Fetcher, revision::Asset,
     wizard_patcher::WizardPatcher,
 };
 use futures_util::{StreamExt, stream};
@@ -17,28 +17,28 @@ static MAIN_PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template(
         "{spinner:.yellow} [{pos}/{len}] [{wide_bar:.cyan/blue}] ({eta_precise}/{elapsed_precise})",
     )
-    .unwrap()
+    .expect("Failed to create progress bar style")
 });
 
 static FILE_PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template("{msg:.cyan} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes}")
-        .unwrap()
+        .expect("Failed to create progress bar style")
 });
 
-pub struct AssetFetcher {
+pub struct AssetFetcher<'a> {
     client: Client,
-    concurrent_downloads: NonZeroUsize,
+    concurrent_downloads: &'a NonZeroUsize,
     wizard_patcher: WizardPatcher,
     save_directory: PathBuf,
-    assets: AssetList,
+    assets: Vec<Asset>,
 }
 
-impl AssetFetcher {
+impl<'a> AssetFetcher<'a> {
     pub fn new<P>(
         wizard_patcher: WizardPatcher,
-        concurrent_downloads: NonZeroUsize,
+        concurrent_downloads: &'a NonZeroUsize,
         save_directory: P,
-        assets: AssetList,
+        assets: Vec<Asset>,
     ) -> miette::Result<Self>
     where
         P: AsRef<Path>,
@@ -53,7 +53,7 @@ impl AssetFetcher {
 
         Ok(AssetFetcher {
             client,
-            save_directory: save_directory.as_ref().join(&wizard_patcher.revision),
+            save_directory: save_directory.as_ref().join(&wizard_patcher.revision.name),
             wizard_patcher,
             concurrent_downloads,
             assets,
@@ -66,20 +66,18 @@ impl AssetFetcher {
             return Err(miette::miette!("No assets to fetch"));
         }
 
-        let total_files = self.assets.wads.len() + self.assets.utils.len();
-
         debug!(
             "Starting download of {} assets with {} concurrent downloads",
-            total_files, self.concurrent_downloads
+            self.assets.len(),
+            self.concurrent_downloads
         );
 
         let multi_progress = MultiProgress::new();
-        let main_progress = multi_progress.add(ProgressBar::new(total_files as u64));
+        let main_progress = multi_progress.add(ProgressBar::new(self.assets.len() as u64));
         main_progress.set_style(MAIN_PROGRESS_STYLE.clone());
         main_progress.enable_steady_tick(Duration::from_millis(200));
 
-        let file_list = self.assets.wads.iter().chain(self.assets.utils.iter());
-        let downloads = file_list.map(|file| {
+        let downloads = self.assets.iter().map(|file| {
             let client = self.client.clone();
             let url_prefix = self.wizard_patcher.url_prefix.clone();
             let save_dir = self.save_directory.clone();
@@ -104,7 +102,7 @@ impl AssetFetcher {
                 match client.get(&url).send().await {
                     Ok(res) => {
                         if !res.status().is_success() {
-                            debug!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
+                            warn!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
                             main_progress.inc(1);
                             return;
                         }
@@ -146,4 +144,4 @@ impl AssetFetcher {
     }
 }
 
-impl Fetcher for AssetFetcher {}
+impl Fetcher for AssetFetcher<'_> {}

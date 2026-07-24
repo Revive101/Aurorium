@@ -1,5 +1,5 @@
 use crate::{
-    errors::ManifestFetcherError, fetcher::fetcher::Fetcher, revision::asset_list::AssetList,
+    errors::ManifestFetcherError, fetcher::fetcher::Fetcher, revision::Asset,
     wizard_patcher::WizardPatcher, xml_parser::parse_file_list,
 };
 use reqwest::Client;
@@ -9,11 +9,6 @@ use std::{
 };
 use tokio::fs::try_exists;
 use tracing::{debug, info};
-
-pub enum ManifestType {
-    Bin,
-    Xml,
-}
 
 /// This struct is responsible for fetching the `LatestFileList.bin` and `LatestFileList.xml` from their servers.
 pub struct ManifestFetcher {
@@ -37,27 +32,11 @@ impl ManifestFetcher {
         Ok(Self {
             client,
             wizard_patcher: wizard_patcher.clone(),
-            save_directory: save_directory.as_ref().join(wizard_patcher.revision),
+            save_directory: save_directory.as_ref().join(wizard_patcher.revision.name),
         })
     }
 
-    pub async fn fetch_manifest(
-        &self,
-        manifest_type: ManifestType,
-    ) -> miette::Result<Option<AssetList>> {
-        match manifest_type {
-            ManifestType::Bin => {
-                self.fetch_bin_manifest().await?;
-                Ok(None)
-            }
-            ManifestType::Xml => {
-                let manifest = self.fetch_xml_manifest().await?;
-                Ok(Some(manifest))
-            }
-        }
-    }
-
-    async fn fetch_bin_manifest(&self) -> miette::Result<()> {
+    pub async fn fetch_bin_manifest(&self) -> miette::Result<()> {
         let path = self.save_directory.join("LatestFileList.bin");
         let file_exists = try_exists(&path).await.map_err(ManifestFetcherError::Io)?;
 
@@ -72,7 +51,7 @@ impl ManifestFetcher {
         Ok(())
     }
 
-    async fn fetch_xml_manifest(&self) -> miette::Result<AssetList> {
+    pub async fn fetch_xml_manifest(&self) -> miette::Result<Vec<Asset>> {
         let path = self.save_directory.join("LatestFileList.xml");
         let file_exists = try_exists(&path).await.map_err(ManifestFetcherError::Io)?;
         let list_file_url = self.wizard_patcher.list_file_url.replace(".bin", ".xml");
@@ -85,15 +64,14 @@ impl ManifestFetcher {
 
         info!(path = %path.display(), "XML manifest already cached, skipping download");
 
-        let (wads, utils) = parse_file_list(path).unwrap();
-        debug!(
-            "Parsed {} entries from LatestFileList.xml",
-            wads.len() + utils.len()
-        );
+        let assets = parse_file_list(path).unwrap_or(vec![]);
+        debug!("Parsed {} entries from LatestFileList.xml", assets.len());
 
-        let list = AssetList { wads, utils };
+        if assets.is_empty() {
+            return Err(ManifestFetcherError::EmptyAssetList.into());
+        }
 
-        Ok(list)
+        Ok(assets)
     }
 }
 

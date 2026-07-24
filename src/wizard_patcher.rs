@@ -1,8 +1,8 @@
 use crate::{
     errors::WizardPatcherError,
+    revision::Revision,
     utils::{Endianness, hex_decode},
 };
-use miette::Severity;
 use regex::Regex;
 use std::{io::Cursor, sync::LazyLock};
 use tokio::{
@@ -12,6 +12,8 @@ use tokio::{
 use tracing::info;
 
 static LIST_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"/(V_[^/]+)/").unwrap());
+static REVISION_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^V_r(\d+)\.Wizard.*$").unwrap());
 
 const BUFFER_SIZE: usize = 256;
 const SESSION_OFFER_LENGTH: usize = 28;
@@ -63,11 +65,11 @@ impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
 pub struct WizardPatcher {
     pub list_file_url: String,
     pub url_prefix: String,
-    pub revision: String,
+    pub revision: Revision,
 }
 
 impl WizardPatcher {
-    #[tracing::instrument(ret)]
+    #[tracing::instrument(ret, level = "debug")]
     pub async fn check_revision(host: &str, port: &str) -> miette::Result<Self> {
         let mut stream = TcpStream::connect(format!("{host}:{port}"))
             .await
@@ -91,11 +93,10 @@ impl WizardPatcher {
 
         // Further checks to ensure the received data is valid
         if bytes_read != SESSION_OFFER_LENGTH {
-            return Err(miette::miette!(
-                "Unexpected response length from server: expected {}, got {}",
+            return Err(WizardPatcherError::UnexpectedResponseLength(
+                bytes_read,
                 SESSION_OFFER_LENGTH,
-                bytes_read
-            ));
+            ))?;
         }
 
         // Send our SESSION_ACCEPT packet to the server
@@ -139,9 +140,6 @@ impl WizardPatcher {
         let list_file_url = cursor.read_bytestring().await?;
         let url_prefix = cursor.read_bytestring().await?;
 
-        info!("List File URL: {}", list_file_url);
-        info!("URL Prefix: {}", url_prefix);
-
         Ok(Self {
             revision: Self::capture_revision(&list_file_url)?,
             url_prefix,
@@ -149,16 +147,34 @@ impl WizardPatcher {
         })
     }
 
-    fn capture_revision(url: &str) -> miette::Result<String> {
+    fn capture_revision(url: &str) -> miette::Result<Revision> {
         if let Some(captures) = LIST_URL_RE.captures(url).and_then(|c| c.get(1)) {
-            return Ok(captures.as_str().to_string());
+            let revision_name = captures.as_str().to_string();
+            let revision_number = Self::extract_revision_number(&revision_name)?;
+
+            return Ok(Revision {
+                name: revision_name,
+                number: revision_number,
+            });
         }
 
-        Err(miette::miette!(
-            severity = Severity::Error,
-            help = "This may indicate a change in the server's response format. Please check for updates or report this issue.",
-            "Failed to parse revision from URL: `{}`.",
-            url
-        ))
+        return Err(WizardPatcherError::RevisionParseError(url.to_string()))?;
+    }
+
+    fn extract_revision_number(name: &str) -> miette::Result<i64> {
+        if let Some(captures) = REVISION_RE.captures(name).and_then(|c| c.get(1)) {
+            let revision_number = captures
+                .as_str()
+                .parse::<i64>()
+                .map_err(|_| WizardPatcherError::RevisionParseError(name.to_string()))?;
+
+            if revision_number < 0 {
+                return Err(WizardPatcherError::InvalidRevisionNumber(revision_number))?;
+            }
+
+            return Ok(revision_number);
+        }
+
+        return Err(WizardPatcherError::RevisionParseError(name.to_string()))?;
     }
 }

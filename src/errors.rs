@@ -54,10 +54,6 @@ pub enum XmlParseError {
     Encoding(#[source] quick_xml::encoding::EncodingError),
 }
 
-// local_revision.rs
-#[derive(Debug, Error, Diagnostic)]
-pub enum LocalRevisionError {}
-
 // wizard_patcher.rs
 #[derive(Debug, Error, Diagnostic)]
 pub enum WizardPatcherError {
@@ -103,6 +99,31 @@ pub enum WizardPatcherError {
         )
     )]
     UnexpectedEofError(#[source] std::io::Error),
+
+    #[error("Unexpected response length: {0}")]
+    #[diagnostic(
+        code(wizard_patcher::unexpected_response_length),
+        help(
+            "The server response length was unexpectedly {0} while {1} was expected. This may indicate a change in the server's response format. Please check for updates or report this issue."
+        )
+    )]
+    UnexpectedResponseLength(usize, usize),
+
+    #[error("Failed to parse revision: {0}")]
+    #[diagnostic(
+        code(wizard_patcher::revision_parse_error),
+        help(
+            "Failed to parse the revision ({0}) from the server response. This may indicate a change in the server's response format. Please check for updates or report this issue."
+        )
+    )]
+    RevisionParseError(String),
+
+    #[error("Revision number must be non-negative, got {0}")]
+    #[diagnostic(
+        code(wizard_patcher::invalid_revision_number),
+        help("Pass a revision number >= 0.")
+    )]
+    InvalidRevisionNumber(i64),
 }
 
 // manifest_fetcher.rs
@@ -120,6 +141,15 @@ pub enum ManifestFetcherError {
         )
     )]
     ClientBuild(#[source] reqwest::Error),
+
+    #[error("Parsed asset list is empty")]
+    #[diagnostic(
+        code(asset_fetcher::empty_asset_list),
+        help(
+            "The parsed asset list is empty. This may indicate that the XML file is invalid or empty. Please check the XML file and try again."
+        )
+    )]
+    EmptyAssetList,
 }
 
 // fetcher.rs

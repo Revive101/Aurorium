@@ -39,9 +39,6 @@ pub enum ConfigError {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub endpoint: SocketAddr,
-    pub max_requests: usize,
-    pub reset_interval: u64,
-    pub timeout: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -64,10 +61,16 @@ pub struct DebugConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct DBConfig {
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub fetcher: FetcherConfig,
     pub patch: PatchConfig,
+    pub database: DBConfig,
     pub debug: Option<DebugConfig>,
 }
 
@@ -93,9 +96,6 @@ impl Default for AppConfig {
         AppConfig {
             server: ServerConfig {
                 endpoint: SocketAddr::from(([127, 0, 0, 1], 12369)),
-                max_requests: 256,
-                reset_interval: 60,
-                timeout: 10,
             },
             patch: PatchConfig {
                 host: "patch.us.wizard101.com".to_string(),
@@ -105,6 +105,9 @@ impl Default for AppConfig {
                 concurrent_downloads: unsafe { NonZeroUsize::new_unchecked(2) },
                 fetch_interval: 60 * 60 * 8,
                 save_directory: "data".to_string(),
+            },
+            database: DBConfig {
+                path: "aurorium.db".to_string(),
             },
             debug: None,
         }
