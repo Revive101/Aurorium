@@ -23,7 +23,6 @@ pub mod xml_parser;
 
 mod config;
 mod fetcher;
-mod patcher;
 mod revision;
 mod routes;
 
