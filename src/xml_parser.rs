@@ -62,7 +62,7 @@ where
                         Field::Size => current.size = text.parse().unwrap_or_default(),
                         Field::HeaderSize => current.header_size = text.parse().unwrap_or_default(),
                         Field::CompressedHeaderSize => {
-                            current.compressed_header_size = text.parse().unwrap_or_default()
+                            current.compressed_header_size = text.parse().unwrap_or_default();
                         }
                         Field::Crc => current.crc = text.parse().unwrap_or_default(),
                         Field::HeaderCrc => current.header_crc = text.parse().unwrap_or_default(),

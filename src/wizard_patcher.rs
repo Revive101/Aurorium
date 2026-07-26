@@ -100,7 +100,8 @@ impl WizardPatcher {
         }
 
         // Send our SESSION_ACCEPT packet to the server
-        let session_accept_bytes = hex_decode(SESSION_ACCEPT, &Endianness::Little).unwrap();
+        let session_accept_bytes =
+            hex_decode(SESSION_ACCEPT, &Endianness::Little).expect("This should not fail!");
         stream
             .write_all(&session_accept_bytes)
             .await
@@ -158,7 +159,7 @@ impl WizardPatcher {
             });
         }
 
-        return Err(WizardPatcherError::RevisionParseError(url.to_string()))?;
+        Err(WizardPatcherError::RevisionParseError(url.to_string()))?
     }
 
     fn extract_revision_number(name: &str) -> miette::Result<i64> {
@@ -169,12 +170,12 @@ impl WizardPatcher {
                 .map_err(|_| WizardPatcherError::RevisionParseError(name.to_string()))?;
 
             if revision_number < 0 {
-                return Err(WizardPatcherError::InvalidRevisionNumber(revision_number))?;
+                Err(WizardPatcherError::InvalidRevisionNumber(revision_number))?;
             }
 
             return Ok(revision_number);
         }
 
-        return Err(WizardPatcherError::RevisionParseError(name.to_string()))?;
+        Err(WizardPatcherError::RevisionParseError(name.to_string()))?
     }
 }

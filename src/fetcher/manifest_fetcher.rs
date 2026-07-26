@@ -24,8 +24,8 @@ impl ManifestFetcher {
     {
         let client = Client::builder()
             .user_agent("KingsIsle Patcher")
-            .tcp_keepalive(Duration::from_secs(60))
-            .timeout(Duration::from_secs(120))
+            .tcp_keepalive(Duration::from_mins(1))
+            .timeout(Duration::from_mins(2))
             .build()
             .map_err(ManifestFetcherError::ClientBuild)?;
 

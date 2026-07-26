@@ -13,7 +13,7 @@ pub enum Endianness {
 
 #[must_use]
 pub fn hex_decode(hex_string: &str, endianness: &Endianness) -> Option<Vec<u8>> {
-    if hex_string.len() % 2 != 0 {
+    if !hex_string.len().is_multiple_of(2) {
         return None;
     }
 

@@ -70,14 +70,14 @@ fn init_logging(config: &AppConfig) -> Option<WorkerGuard> {
     let file_logging = config
         .debug
         .as_ref()
-        .and_then(|debug| debug.file_logging.clone())
+        .and_then(|debug| debug.file_logging)
         .unwrap_or(false);
 
     let timer = ChronoLocal::new("%d.%m.%Y %H:%M:%S".to_string());
 
     // Console logging
     let crate_name = env!("CARGO_PKG_NAME").replace('-', "_");
-    let console_directive = format!("error,{}={}", crate_name, log_level);
+    let console_directive = format!("error,{crate_name}={log_level}");
 
     let console_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(console_directive));
@@ -131,7 +131,7 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
     loop {
         info!("Checking for a new revision @ {host}:{port}");
 
-        let wizard_patcher = WizardPatcher::check_revision(&host, &port).await?;
+        let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
         let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
         manifest_fetcher.fetch_bin_manifest().await?;
         let new_assets = manifest_fetcher.fetch_xml_manifest().await?;

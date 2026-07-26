@@ -46,8 +46,8 @@ impl<'a> AssetFetcher<'a> {
         let client = Client::builder()
             .user_agent("KingsIsle Patcher")
             .pool_max_idle_per_host(concurrent_downloads.get())
-            .tcp_keepalive(Duration::from_secs(60))
-            .timeout(Duration::from_secs(120))
+            .tcp_keepalive(Duration::from_mins(1))
+            .timeout(Duration::from_mins(2))
             .build()
             .map_err(AssetFetcherError::ClientBuild)?;
 
@@ -109,11 +109,11 @@ impl<'a> AssetFetcher<'a> {
 
                         let short_filename = file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
                         file_progress.set_style(FILE_PROGRESS_STYLE.clone());
-                        file_progress.set_message(format!("{}", short_filename));
-                        file_progress.set_length(res.content_length().unwrap_or(file.size as u64));
+                        file_progress.set_message(format!("{short_filename}"));
+                        file_progress.set_length(res.content_length().unwrap_or(file.size.cast_unsigned()));
 
                         match Self::write_to_file_streamed(&save_path, res, Some(&file_progress)).await {
-                            Ok(_) => {
+                            Ok(()) => {
                                 file_progress.finish_with_message("Done");
                             }
                             Err(e) => {

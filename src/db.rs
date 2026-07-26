@@ -65,7 +65,7 @@ impl Database {
 
     pub async fn insert_revision(&self, revision_name: String, number: i64) -> miette::Result<()> {
         if number < 0 {
-            return Err(DbError::InvalidRevisionNumber(number))?;
+            Err(DbError::InvalidRevisionNumber(number))?;
         }
 
         self.client
