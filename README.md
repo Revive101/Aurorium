@@ -15,16 +15,16 @@
 
 ## Table of Contents
 
-- [Introduction](#-introduction)
-- [What's New in the Rework](#-whats-new-in-the-rework)
-- [Architecture](#-architecture)
-- [Getting Started](#-getting-started)
-- [Configuration](#-configuration)
-- [HTTP API](#-http-api)
-- [Migrating from v3.x](#-migrating-from-v3x)
-- [Contributing](#-contributing)
-- [Community](#-community)
-- [License](#-license)
+- [Introduction](#introduction)
+- [What's New in the Rework](#whats-new-in-the-rework)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [HTTP API](#http-api)
+- [Migrating from v3.x](#migrating-from-v3x)
+- [Contributing](#contributing)
+- [Community](#community)
+- [License](#license)
 
 ---
 
@@ -77,7 +77,7 @@ cargo run                # Debug
 cargo build --release    # Optimized build
 ```
 
-On first launch, if no `config.toml` is found in the working directory, Aurorium generates one with sensible defaults (see [Configuration](#-configuration)).
+On first launch, if no `config.toml` is found in the working directory, Aurorium generates one with sensible defaults (see [Configuration](#configuration)).
 
 ### Common Errors
 
