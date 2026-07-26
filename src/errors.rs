@@ -127,7 +127,7 @@ pub enum WizardPatcherError {
 }
 
 // manifest_fetcher.rs
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum ManifestFetcherError {
     #[error("File system I/O error")]
     #[diagnostic(code(asset_fetcher::io))]
@@ -153,7 +153,7 @@ pub enum ManifestFetcherError {
 }
 
 // fetcher.rs
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum FetcherTraitError {
     #[error("Failed to fetch {1}")]
     #[diagnostic(code(asset_fetcher::manifest_fetch))]
@@ -175,4 +175,113 @@ pub enum FetcherTraitError {
     #[error("failed to finalize downloaded file")]
     #[diagnostic(code(asset_fetcher::rename))]
     Rename(#[source] std::io::Error),
+}
+
+// config.rs
+#[derive(Debug, Error, Diagnostic)]
+pub enum ConfigError {
+    #[error("Could not find config.toml")]
+    #[diagnostic(
+        code(config::not_found),
+        help("Create a config.toml file in the current directory")
+    )]
+    NotFound(#[source] std::io::Error),
+
+    #[error("Failed to parse config.toml")]
+    #[diagnostic(
+        code(config::parse_error),
+        help(
+            "Check your config.toml for any missing or invalid fields, check the documentation for reference!"
+        )
+    )]
+    ParseError(#[source] toml::de::Error),
+
+    #[error("Failed to serialize default config.toml")]
+    #[diagnostic(
+        code(config::serialize_error),
+        help("This is usually caused by an invalid default configuration value")
+    )]
+    SerializeError(#[source] toml::ser::Error),
+
+    #[error("Failed to write default config.toml")]
+    #[diagnostic(
+        code(config::write_error),
+        help("Check your permissions and try again")
+    )]
+    PathError(#[source] std::io::Error),
+}
+
+#[derive(Debug, Error, Diagnostic)]
+pub enum DbError {
+    #[error("Database initialization error: {0}")]
+    #[diagnostic(
+        code(db::init_db_error),
+        help("Ensure the database path is correct and accessible.")
+    )]
+    Init(rusqlite::Error),
+
+    #[error("Database execution error: {0}")]
+    #[diagnostic(
+        code(db::execute_error),
+        help("Check the SQL statement for correctness. (This should NOT happen!)")
+    )]
+    Execute(#[from] rusqlite::Error),
+
+    #[error("Database transaction error: {0}")]
+    #[diagnostic(
+        code(db::transaction_error),
+        help("Ensure that the transaction is valid and that the database is not locked.")
+    )]
+    Transaction(rusqlite::Error),
+
+    #[error("Database migration error: {0}")]
+    #[diagnostic(
+        code(db::migration_error),
+        help("Check the migration scripts for correctness. (This should NOT happen!)")
+    )]
+    Migration(#[from] rusqlite_migration::Error),
+
+    #[error("Async SQLite error: {0}")]
+    #[diagnostic(
+        code(db::async_sqlite_error),
+        help(
+            "Ensure that the async SQLite client is properly configured and that the database is accessible."
+        )
+    )]
+    AsyncSqlite(#[from] async_sqlite::Error),
+
+    #[error("Revision number must be non-negative, got {0}")]
+    #[diagnostic(
+        code(db::invalid_revision_number),
+        help("Pass a revision number >= 0.")
+    )]
+    InvalidRevisionNumber(i64),
+}
+
+// routes/*.rs
+#[derive(Debug, thiserror::Error, miette::Diagnostic)]
+pub enum RouteError {
+    #[error("File not found: {0}")]
+    #[diagnostic(
+        code(route::file_not_found),
+        help("Ensure the requested file exists on the server.")
+    )]
+    NotFound(String),
+
+    #[error("Database error: {0}")]
+    #[diagnostic(
+        code(route::database_error),
+        help("Check the database connection and query for correctness.")
+    )]
+    Database(#[from] DbError),
+
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
+    #[error("Invalid working directory")]
+    #[diagnostic(
+        code(route::invalid_working_dir),
+        help("The server's working directory is invalid. Please check the server configuration.")
+    )]
+    InvalidWorkingDir(#[from] std::io::Error),
 }

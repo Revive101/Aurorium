@@ -1,4 +1,4 @@
-use crate::{AppState, utils::ConnectionAddr};
+use crate::{AppState, errors::RouteError, utils::ConnectionAddr};
 use axum::{
     extract::{Path, Request, State},
     response::IntoResponse,
@@ -8,33 +8,6 @@ use std::path::{Component, Path as StdPath};
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
 use tracing::{debug, warn};
-
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
-pub enum RouteError {
-    #[error("File not found: {0}")]
-    #[diagnostic(
-        code(route::file_not_found),
-        help("Ensure the requested file exists on the server.")
-    )]
-    NotFound(String),
-
-    #[error("Database error: {0}")]
-    #[diagnostic(
-        code(route::database_error),
-        help("Check the database connection and query for correctness.")
-    )]
-    Database(#[from] crate::db::DbError),
-
-    #[error("Bad request: {0}")]
-    BadRequest(String),
-
-    #[error("Invalid working directory")]
-    #[diagnostic(
-        code(route::invalid_working_dir),
-        help("The server's working directory is invalid. Please check the server configuration.")
-    )]
-    InvalidWorkingDir(#[from] std::io::Error),
-}
 
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {

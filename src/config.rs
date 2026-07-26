@@ -1,40 +1,7 @@
-use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, num::NonZeroUsize, path::Path};
-use thiserror::Error;
 
-#[derive(Debug, Error, Diagnostic)]
-pub enum ConfigError {
-    #[error("Could not find config.toml")]
-    #[diagnostic(
-        code(config::not_found),
-        help("Create a config.toml file in the current directory")
-    )]
-    NotFound(#[source] std::io::Error),
-
-    #[error("Failed to parse config.toml")]
-    #[diagnostic(
-        code(config::parse_error),
-        help(
-            "Check your config.toml for any missing or invalid fields, check the documentation for reference!"
-        )
-    )]
-    ParseError(#[source] toml::de::Error),
-
-    #[error("Failed to serialize default config.toml")]
-    #[diagnostic(
-        code(config::serialize_error),
-        help("This is usually caused by an invalid default configuration value")
-    )]
-    SerializeError(#[source] toml::ser::Error),
-
-    #[error("Failed to write default config.toml")]
-    #[diagnostic(
-        code(config::write_error),
-        help("Check your permissions and try again")
-    )]
-    PathError(#[source] std::io::Error),
-}
+use crate::errors::ConfigError;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerConfig {

@@ -1,56 +1,12 @@
-use crate::revision::{Asset, Revision};
+use crate::{
+    errors::DbError,
+    revision::{Asset, Revision},
+};
 use async_sqlite::{Client, ClientBuilder, JournalMode};
 use rusqlite::{Connection, OptionalExtension, params};
 use rusqlite_migration::{M, Migrations};
 use std::sync::LazyLock;
 use tracing::info;
-
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
-pub enum DbError {
-    #[error("Database initialization error: {0}")]
-    #[diagnostic(
-        code(db::init_db_error),
-        help("Ensure the database path is correct and accessible.")
-    )]
-    Init(rusqlite::Error),
-
-    #[error("Database execution error: {0}")]
-    #[diagnostic(
-        code(db::execute_error),
-        help("Check the SQL statement for correctness. (This should NOT happen!)")
-    )]
-    Execute(#[from] rusqlite::Error),
-
-    #[error("Database transaction error: {0}")]
-    #[diagnostic(
-        code(db::transaction_error),
-        help("Ensure that the transaction is valid and that the database is not locked.")
-    )]
-    Transaction(rusqlite::Error),
-
-    #[error("Database migration error: {0}")]
-    #[diagnostic(
-        code(db::migration_error),
-        help("Check the migration scripts for correctness. (This should NOT happen!)")
-    )]
-    Migration(#[from] rusqlite_migration::Error),
-
-    #[error("Async SQLite error: {0}")]
-    #[diagnostic(
-        code(db::async_sqlite_error),
-        help(
-            "Ensure that the async SQLite client is properly configured and that the database is accessible."
-        )
-    )]
-    AsyncSqlite(#[from] async_sqlite::Error),
-
-    #[error("Revision number must be non-negative, got {0}")]
-    #[diagnostic(
-        code(db::invalid_revision_number),
-        help("Pass a revision number >= 0.")
-    )]
-    InvalidRevisionNumber(i64),
-}
 
 static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
     Migrations::new(vec![M::up(
