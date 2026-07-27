@@ -2,8 +2,10 @@ use crate::{
     config::{AppConfig, FetcherConfig, PatchConfig, ServerConfig},
     db::Database,
     fetcher::{asset_fetcher::AssetFetcher, manifest_fetcher::ManifestFetcher},
+    revision::Revision,
     routes::{file::file, latest::get_latest_revision, revisions::get_revisions},
     wizard_patcher::WizardPatcher,
+    xml_parser::parse_file_list,
 };
 use axum::{Router, routing::get};
 use miette::Result;
@@ -134,14 +136,6 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
         let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
         manifest_fetcher.fetch_bin_manifest().await?;
         let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
-
-        let avg_size =
-            new_assets.iter().map(|a| a.size).sum::<u32>() as f64 / new_assets.len() as f64;
-        debug!(
-            "Average asset size: {:.2} bytes ({:.2} MB)",
-            avg_size,
-            avg_size / (1024.0 * 1024.0)
-        );
 
         match db
             .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
