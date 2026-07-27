@@ -19,7 +19,7 @@ static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
             CREATE TABLE assets (
                 revision TEXT NOT NULL REFERENCES revisions(revision_name),
                 file_name TEXT NOT NULL,
-                tar_file_name TEXT NOT NULL,
+                tar_file_name TEXT,
                 file_type INTEGER NOT NULL,
                 size INTEGER NOT NULL,
                 crc INTEGER NOT NULL,
