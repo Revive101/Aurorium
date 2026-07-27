@@ -93,7 +93,7 @@ impl WizardPatcher {
 
         // Further checks to ensure the received data is valid
         if bytes_read != SESSION_OFFER_LENGTH {
-            return Err(WizardPatcherError::UnexpectedResponseLength(
+            Err(WizardPatcherError::UnexpectedResponseLength(
                 bytes_read,
                 SESSION_OFFER_LENGTH,
             ))?;
