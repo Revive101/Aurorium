@@ -4,6 +4,7 @@ use std::{fs::File, io::BufReader, path::Path};
 
 enum Field {
     Src,
+    Tar,
     FileType,
     Size,
     HeaderSize,
@@ -41,6 +42,7 @@ where
                     current = Asset::default();
                 }
                 b"SrcFileName" => field = Some(Field::Src),
+                b"TarFileName" => field = Some(Field::Tar),
                 b"FileType" => field = Some(Field::FileType),
                 b"Size" => field = Some(Field::Size),
                 b"HeaderSize" => field = Some(Field::HeaderSize),
@@ -58,6 +60,13 @@ where
 
                     match f {
                         Field::Src => current.file_name = text.into_owned(),
+                        Field::Tar => {
+                            current.tar_file_name = if text.is_empty() {
+                                None
+                            } else {
+                                Some(text.into_owned())
+                            }
+                        }
                         Field::FileType => current.file_type = text.parse().unwrap_or_default(),
                         Field::Size => current.size = text.parse().unwrap_or_default(),
                         Field::HeaderSize => current.header_size = text.parse().unwrap_or_default(),
