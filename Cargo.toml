@@ -3,7 +3,7 @@ authors = ["Phill030"]
 license-file = "LICENSE.md"
 repository = "https://github.com/Phill030/Aurorium"
 name = "aurorium"
-version = "4.0.0"
+version = "4.0.1"
 edition = "2024"
 
 [dependencies]
