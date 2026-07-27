@@ -2,16 +2,14 @@ use crate::{
     config::{AppConfig, FetcherConfig, PatchConfig, ServerConfig},
     db::Database,
     fetcher::{asset_fetcher::AssetFetcher, manifest_fetcher::ManifestFetcher},
-    revision::Revision,
     routes::{file::file, latest::get_latest_revision, revisions::get_revisions},
     wizard_patcher::WizardPatcher,
-    xml_parser::parse_file_list,
 };
 use axum::{Router, routing::get};
 use miette::Result;
 use std::{net::SocketAddr, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
-use tracing::{debug, info, level_filters::LevelFilter, warn};
+use tracing::{info, level_filters::LevelFilter, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
     EnvFilter, Layer, fmt::time::ChronoLocal, layer::SubscriberExt, util::SubscriberInitExt,
