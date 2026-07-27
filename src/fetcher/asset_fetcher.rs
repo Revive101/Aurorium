@@ -110,7 +110,7 @@ impl<'a> AssetFetcher<'a> {
                         let short_filename = file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
                         file_progress.set_style(FILE_PROGRESS_STYLE.clone());
                         file_progress.set_message(format!("{short_filename}"));
-                        file_progress.set_length(res.content_length().unwrap_or(file.size.cast_unsigned()));
+                        file_progress.set_length(res.content_length().unwrap_or(file.size.into()));
 
                         match Self::write_to_file_streamed(&save_path, res, Some(&file_progress)).await {
                             Ok(()) => {

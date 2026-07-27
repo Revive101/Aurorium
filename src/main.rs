@@ -136,7 +136,7 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
         let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
 
         let avg_size =
-            new_assets.iter().map(|a| a.size).sum::<i64>() as f64 / new_assets.len() as f64;
+            new_assets.iter().map(|a| a.size).sum::<u32>() as f64 / new_assets.len() as f64;
         debug!(
             "Average asset size: {:.2} bytes ({:.2} MB)",
             avg_size,

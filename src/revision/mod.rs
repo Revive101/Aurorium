@@ -3,10 +3,11 @@ use std::fmt::Display;
 #[derive(Debug, Default, Clone)]
 pub struct Asset {
     pub file_name: String,
-    pub file_type: String,
-    pub size: i64,
-    pub header_size: i64,
-    pub compressed_header_size: i64,
+    pub tar_file_name: String,
+    pub file_type: u32,
+    pub size: u32,
+    pub header_size: u32,
+    pub compressed_header_size: u32,
     pub crc: u32,
     pub header_crc: u32,
 }

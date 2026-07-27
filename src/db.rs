@@ -19,6 +19,7 @@ static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
             CREATE TABLE assets (
                 revision TEXT NOT NULL REFERENCES revisions(revision_name),
                 file_name TEXT NOT NULL,
+                tar_file_name TEXT NOT NULL,
                 file_type INTEGER NOT NULL,
                 size INTEGER NOT NULL,
                 crc INTEGER NOT NULL,
@@ -61,24 +62,6 @@ impl Database {
         info!("Database {} initialized!", path);
 
         Ok(Self { client })
-    }
-
-    pub async fn insert_revision(&self, revision_name: String, number: i64) -> miette::Result<()> {
-        if number < 0 {
-            Err(DbError::InvalidRevisionNumber(number))?;
-        }
-
-        self.client
-            .conn_and_then(move |conn| -> Result<(), DbError> {
-                conn.execute(
-                    "INSERT INTO revisions (revision_name, number) VALUES (?1, ?2)",
-                    params![revision_name, number],
-                )?;
-                Ok(())
-            })
-            .await?;
-
-        Ok(())
     }
 
     pub async fn get_latest_revision(&self) -> miette::Result<Option<Revision>> {
@@ -161,9 +144,9 @@ impl Database {
             )?;
             let mut stmt_insert = tx.prepare(
                 "INSERT OR IGNORE INTO assets (
-                    revision, file_name, file_type, size, crc,
+                    revision, file_name, tar_file_name, file_type, size, crc,
                     header_crc, header_size, compressed_header_size, origin_revision
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )?;
 
             let mut assets_to_download = Vec::new();
@@ -189,6 +172,7 @@ impl Database {
                 stmt_insert.execute(params![
                     revision.name,
                     asset.file_name,
+                    asset.tar_file_name,
                     asset.file_type,
                     asset.size,
                     asset.crc,
