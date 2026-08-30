@@ -4,10 +4,11 @@ use crate::{
     utils::{Endianness, hex_decode},
 };
 use regex::Regex;
-use std::{io::Cursor, sync::LazyLock};
+use std::{io::Cursor, sync::LazyLock, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
+    time::timeout,
 };
 use tracing::info;
 
@@ -28,7 +29,7 @@ trait WizIntegration {
     fn read_le(&mut self, size: usize) -> impl Future<Output = miette::Result<Vec<u8>>> + Send;
 }
 
-impl WizIntegration for Cursor<[u8; BUFFER_SIZE]> {
+impl WizIntegration for Cursor<Vec<u8>> {
     const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
 
     async fn read_bytestring(&mut self) -> miette::Result<String> {
@@ -77,27 +78,12 @@ impl WizardPatcher {
 
         info!("Connected to the PatchServer at {host}:{port}");
 
-        let mut buffer = [0u8; BUFFER_SIZE];
-
         // Read the initial offer from the server
-        let bytes_read = stream
-            .read(&mut buffer)
+        let mut session_offer = [0u8; SESSION_OFFER_LENGTH];
+        stream
+            .read_exact(&mut session_offer)
             .await
             .map_err(WizardPatcherError::ReadError)?;
-
-        if bytes_read == 0 {
-            return Err(miette::miette!(
-                "Server closed the connection unexpectedly."
-            ));
-        }
-
-        // Further checks to ensure the received data is valid
-        if bytes_read != SESSION_OFFER_LENGTH {
-            Err(WizardPatcherError::UnexpectedResponseLength(
-                bytes_read,
-                SESSION_OFFER_LENGTH,
-            ))?;
-        }
 
         // Send our SESSION_ACCEPT packet to the server
         let session_accept_bytes =
@@ -107,28 +93,40 @@ impl WizardPatcher {
             .await
             .map_err(WizardPatcherError::WriteError)?;
 
-        let mut response_buffer = [0u8; BUFFER_SIZE];
-        let response_bytes_read = stream
-            .read(&mut response_buffer)
-            .await
-            .map_err(WizardPatcherError::ReadError)?;
-
-        if response_bytes_read == 0 {
-            return Err(miette::miette!(
-                "Server closed the connection unexpectedly after sending SESSION_ACCEPT."
-            ));
-        }
-
         stream
             .shutdown()
             .await
             .map_err(WizardPatcherError::ShutdownError)?;
 
+        let mut response_buffer = Vec::with_capacity(BUFFER_SIZE);
+        let mut chunk = [0u8; BUFFER_SIZE];
+        loop {
+            match timeout(Duration::from_millis(500), stream.read(&mut chunk)).await {
+                Ok(Ok(0)) => break,
+                Ok(Ok(bytes_read)) => response_buffer.extend_from_slice(&chunk[..bytes_read]),
+                Ok(Err(e)) => return Err(WizardPatcherError::ReadError(e).into()),
+                Err(_) => {
+                    if response_buffer.is_empty() {
+                        return Err(miette::miette!(
+                            "Timed out waiting for patch server response payload."
+                        ));
+                    }
+                    break;
+                }
+            }
+        }
+
+        if response_buffer.is_empty() {
+            return Err(miette::miette!(
+                "Server closed the connection unexpectedly after sending SESSION_ACCEPT."
+            ));
+        }
+
         Self::parse_response(&response_buffer).await
     }
 
-    async fn parse_response(buffer: &[u8; BUFFER_SIZE]) -> miette::Result<Self> {
-        let mut cursor: Cursor<[u8; BUFFER_SIZE]> = Cursor::new(*buffer);
+    async fn parse_response(buffer: &[u8]) -> miette::Result<Self> {
+        let mut cursor: Cursor<Vec<u8>> = Cursor::new(buffer.to_vec());
 
         if !cursor.verify_food_header().await? {
             return Err(miette::miette!("Invalid FOOD header in server response."));

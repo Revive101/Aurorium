@@ -130,31 +130,41 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
     loop {
         info!("Checking for a new revision @ {host}:{port}");
 
-        let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
-        let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
-        manifest_fetcher.fetch_bin_manifest().await?;
-        let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
+        let check_result: miette::Result<()> = async {
+            let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
+            let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
+            manifest_fetcher.fetch_bin_manifest().await?;
+            let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
 
-        match db
-            .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
-            .await
-        {
-            Ok(assets) => {
-                info!(
-                    "Revision {} has {} updated or new assets. Starting/Continuing download...",
-                    &wizard_patcher.revision,
-                    assets.len()
-                );
+            match db
+                .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
+                .await
+            {
+                Ok(assets) => {
+                    info!(
+                        "Revision {} has {} updated or new assets. Starting/Continuing download...",
+                        &wizard_patcher.revision,
+                        assets.len()
+                    );
 
-                let asset_fetched =
-                    AssetFetcher::new(wizard_patcher, concurrent_downloads, save_directory, assets)
-                        .unwrap();
-
-                asset_fetched.fetch_assets().await?;
+                    let asset_fetcher = AssetFetcher::new(
+                        wizard_patcher,
+                        concurrent_downloads,
+                        save_directory,
+                        assets,
+                    )?;
+                    asset_fetcher.fetch_assets().await?;
+                }
+                Err(e) => {
+                    warn!(error = %e, "Failed to insert new revision into database");
+                }
             }
-            Err(e) => {
-                warn!(error = %e, "Failed to insert new revision into database");
-            }
+            Ok(())
+        }
+        .await;
+
+        if let Err(error) = check_result {
+            warn!(error = %error, "Revision check failed, continuing after sleep");
         }
 
         info!("Done checking. Sleeping...");
