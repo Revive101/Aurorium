@@ -60,9 +60,9 @@ impl ManifestFetcher {
             info!("Fetching LatestFileList.xml...");
             let response = Self::fetch(&self.client, &list_file_url).await?;
             Self::write_to_file_streamed(&path, response, None).await?;
+        } else {
+            info!(path = %path.display(), "XML manifest already cached, skipping download");
         }
-
-        info!(path = %path.display(), "XML manifest already cached, skipping download");
 
         let assets = parse_file_list(path).unwrap_or(vec![]);
         debug!("Parsed {} entries from LatestFileList.xml", assets.len());
