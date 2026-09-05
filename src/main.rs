@@ -9,7 +9,7 @@ use axum::{Router, routing::get};
 use miette::Result;
 use std::{net::SocketAddr, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
-use tracing::{info, level_filters::LevelFilter, warn};
+use tracing::{error, info, level_filters::LevelFilter, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
     EnvFilter, Layer, fmt::time::ChronoLocal, layer::SubscriberExt, util::SubscriberInitExt,
@@ -50,10 +50,18 @@ async fn main() -> Result<()> {
     let db = Database::init(&config.database.path).await?;
 
     let state = AppState::new(config.clone(), db.clone());
-    let tasks = tokio::join!(revision_checker(config, db), file_server(state));
-
-    tasks.0?;
-    tasks.1?;
+    tokio::select! {
+        res = revision_checker(config, db) => {
+            if let Err(e) = res {
+                error!(error = ?e, "Revision checker terminated unexpectedly");
+            }
+        }
+        res = file_server(state) => {
+            if let Err(e) = res {
+                error!(error = ?e, "File server terminated unexpectedly");
+            }
+        }
+    }
 
     Ok(())
 }
