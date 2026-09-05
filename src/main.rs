@@ -130,7 +130,15 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
     loop {
         info!("Checking for a new revision @ {host}:{port}");
 
-        let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
+        let wizard_patcher = match WizardPatcher::check_revision(host, port).await {
+            Ok(wizard_patcher) => wizard_patcher,
+            Err(e) => {
+                warn!(error = %e, "Failed to check for a new revision. Retrying in {} seconds...", fetch_interval);
+                sleep(Duration::from_secs(*fetch_interval)).await;
+                continue;
+            }
+        };
+
         let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
         manifest_fetcher.fetch_bin_manifest().await?;
         let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
