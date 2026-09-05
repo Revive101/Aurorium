@@ -4,7 +4,7 @@ use crate::{
     utils::{Endianness, hex_decode},
 };
 use regex::Regex;
-use std::{io::Cursor, sync::LazyLock};
+use std::{io::Cursor, sync::LazyLock, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -19,6 +19,7 @@ const BUFFER_SIZE: usize = 256;
 const SESSION_OFFER_LENGTH: usize = 28;
 const SESSION_ACCEPT: &str =
     "0DF02700000000000802220000000000000000000000000000000000000000000000000000000000000000"; // PatchMessages(8) -> MSG_LATEST_FILE_LIST_V2 (2)
+const TCP_TIMEOUT: Duration = Duration::from_secs(30);
 
 trait WizIntegration {
     const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
@@ -71,18 +72,20 @@ pub struct WizardPatcher {
 impl WizardPatcher {
     #[tracing::instrument(ret, level = "debug")]
     pub async fn check_revision(host: &str, port: &str) -> miette::Result<Self> {
-        let mut stream = TcpStream::connect(format!("{host}:{port}"))
-            .await
-            .map_err(WizardPatcherError::ConnectionError)?;
+        let mut stream =
+            tokio::time::timeout(TCP_TIMEOUT, TcpStream::connect(format!("{host}:{port}")))
+                .await
+                .map_err(|_| WizardPatcherError::TimeoutError)?
+                .map_err(WizardPatcherError::ConnectionError)?;
 
         info!("Connected to the PatchServer at {host}:{port}");
 
         let mut buffer = [0u8; BUFFER_SIZE];
 
         // Read the initial offer from the server
-        let bytes_read = stream
-            .read(&mut buffer)
+        let bytes_read = tokio::time::timeout(TCP_TIMEOUT, stream.read(&mut buffer))
             .await
+            .map_err(|_| WizardPatcherError::TimeoutError)?
             .map_err(WizardPatcherError::ReadError)?;
 
         if bytes_read == 0 {
@@ -102,16 +105,17 @@ impl WizardPatcher {
         // Send our SESSION_ACCEPT packet to the server
         let session_accept_bytes =
             hex_decode(SESSION_ACCEPT, &Endianness::Little).expect("This should not fail!");
-        stream
-            .write_all(&session_accept_bytes)
+        tokio::time::timeout(TCP_TIMEOUT, stream.write_all(&session_accept_bytes))
             .await
+            .map_err(|_| WizardPatcherError::TimeoutError)?
             .map_err(WizardPatcherError::WriteError)?;
 
         let mut response_buffer = [0u8; BUFFER_SIZE];
-        let response_bytes_read = stream
-            .read(&mut response_buffer)
-            .await
-            .map_err(WizardPatcherError::ReadError)?;
+        let response_bytes_read =
+            tokio::time::timeout(TCP_TIMEOUT, stream.read(&mut response_buffer))
+                .await
+                .map_err(|_| WizardPatcherError::TimeoutError)?
+                .map_err(WizardPatcherError::ReadError)?;
 
         if response_bytes_read == 0 {
             return Err(miette::miette!(
@@ -119,11 +123,7 @@ impl WizardPatcher {
             ));
         }
 
-        stream
-            .shutdown()
-            .await
-            .map_err(WizardPatcherError::ShutdownError)?;
-
+        let _ = tokio::time::timeout(TCP_TIMEOUT, stream.shutdown()).await;
         Self::parse_response(&response_buffer).await
     }
 

@@ -57,6 +57,15 @@ pub enum XmlParseError {
 // wizard_patcher.rs
 #[derive(Debug, Error, Diagnostic)]
 pub enum WizardPatcherError {
+    #[error("Connection or operation timed out")]
+    #[diagnostic(
+        code(wizard_patcher::timeout_error),
+        help(
+            "The server took too long to respond. Check your internet connection or try again later."
+        )
+    )]
+    TimeoutError,
+
     #[error("Failed to connect to the server")]
     #[diagnostic(
         code(wizard_patcher::connection_error),
