@@ -63,7 +63,11 @@ impl<'a> AssetFetcher<'a> {
     #[instrument(skip(self))]
     pub async fn fetch_assets(&self) -> miette::Result<()> {
         if self.assets.is_empty() {
-            return Err(miette::miette!("No assets to fetch"));
+            info!(
+                "No assets to fetch for revision {}",
+                self.wizard_patcher.revision
+            );
+            return Ok(());
         }
 
         debug!(
@@ -98,7 +102,6 @@ impl<'a> AssetFetcher<'a> {
                 }
 
                 // Download the file and write it to disk
-                let file_progress = multi_progress.add(ProgressBar::new_spinner());
                 match client.get(&url).send().await {
                     Ok(res) => {
                         if !res.status().is_success() {
@@ -107,6 +110,7 @@ impl<'a> AssetFetcher<'a> {
                             return;
                         }
 
+                        let file_progress = multi_progress.add(ProgressBar::new_spinner());
                         let short_filename = file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
                         file_progress.set_style(FILE_PROGRESS_STYLE.clone());
                         file_progress.set_message(short_filename.to_string());
@@ -120,6 +124,8 @@ impl<'a> AssetFetcher<'a> {
                                 warn!(error = %e, file = %file.file_name, "failed to write file to disk");
                             }
                         }
+
+                        multi_progress.remove(&file_progress);
                     },
                     Err(e) => {
                         // TODO: Handle retries (or log failures in a separate list)
@@ -128,7 +134,6 @@ impl<'a> AssetFetcher<'a> {
                 }
 
                 main_progress.inc(1);
-                multi_progress.remove(&file_progress);
             }
         });
 
