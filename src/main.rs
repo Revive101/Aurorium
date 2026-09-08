@@ -138,39 +138,47 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
     loop {
         info!("Checking for a new revision @ {host}:{port}");
 
-        let wizard_patcher = match WizardPatcher::check_revision(host, port).await {
-            Ok(wizard_patcher) => wizard_patcher,
-            Err(e) => {
-                warn!(error = %e, "Failed to check for a new revision. Retrying in {} seconds...", fetch_interval);
-                sleep(Duration::from_secs(*fetch_interval)).await;
-                continue;
+        let result = async {
+            let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
+
+            let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
+            manifest_fetcher.fetch_bin_manifest().await?;
+            let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
+
+            match db
+                .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
+                .await
+            {
+                Ok(assets) => {
+                    info!(
+                        "Revision {} has {} updated or new assets. Starting/Continuing download...",
+                        &wizard_patcher.revision,
+                        assets.len()
+                    );
+
+                    let asset_fetched = AssetFetcher::new(
+                        wizard_patcher,
+                        concurrent_downloads,
+                        save_directory,
+                        assets,
+                    )
+                    .unwrap();
+
+                    asset_fetched.fetch_assets().await?;
+                }
+                Err(e) => {
+                    warn!(error = %e, "Failed to insert new revision into database");
+                }
             }
-        };
 
-        let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
-        manifest_fetcher.fetch_bin_manifest().await?;
-        let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
+            Ok::<(), miette::Report>(())
+        }
+        .await;
 
-        match db
-            .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
-            .await
-        {
-            Ok(assets) => {
-                info!(
-                    "Revision {} has {} updated or new assets. Starting/Continuing download...",
-                    &wizard_patcher.revision,
-                    assets.len()
-                );
-
-                let asset_fetched =
-                    AssetFetcher::new(wizard_patcher, concurrent_downloads, save_directory, assets)
-                        .unwrap();
-
-                asset_fetched.fetch_assets().await?;
-            }
-            Err(e) => {
-                warn!(error = %e, "Failed to insert new revision into database");
-            }
+        if let Err(e) = result {
+            warn!(error = %e, "Revision check failed. Will retry next time.");
+            sleep(Duration::from_secs(*fetch_interval)).await;
+            continue;
         }
 
         info!("Done checking. Sleeping...");
