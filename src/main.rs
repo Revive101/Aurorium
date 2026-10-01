@@ -26,6 +26,9 @@ mod fetcher;
 mod revision;
 mod routes;
 
+#[cfg(test)]
+mod asset_tests;
+
 #[derive(Clone)]
 pub struct AppState {
     pub config: AppConfig,

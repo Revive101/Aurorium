@@ -58,9 +58,12 @@ pub async fn file(
     let revision_for_asset = if file_path.contains("LatestFileList") {
         revision
     } else {
+        // Header sidecars have the same owner as their WAD; manifests index only
+        // the WAD itself, with the header sizes stored on that asset row.
+        let indexed_path = file_path.strip_suffix(".hdr.gz").unwrap_or(&file_path);
         state
             .db
-            .get_revision_for_asset(revision, file_path.clone())
+            .get_revision_for_asset(revision, indexed_path.to_owned())
             .await?
             .ok_or_else(|| RouteError::NotFound(file_path.clone()))?
     };

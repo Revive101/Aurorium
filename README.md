@@ -143,6 +143,22 @@ Once running, Aurorium exposes:
 
 `LatestFileList.xml`/`.bin` are always served from the requested revision directly; any other file is resolved to whichever revision first introduced it, so unchanged assets aren't duplicated on disk.
 
+## Asset downloads
+
+The client requests `.wad.hdr.gz` sidecars before streaming some WAD archives.
+These sidecars are downloaded ahead of the archives, including for WADs already
+cached on disk. HTTP requests resolve a sidecar through its owning WAD's revision
+because the manifest does not index headers as separate assets.
+
+Asset transfers use connection and idle-read timeouts, without a total-duration
+limit. Interrupted transfers retain their `.part` files and resume with validated
+HTTP ranges. A server that ignores a range causes a full restart, not an append.
+Only responses matching the manifest size are published. A failed batch is logged
+as incomplete and retried at the configured fetch interval.
+
+Run `cargo test --locked` for the local HTTP regression tests covering truncated
+responses, range handling, error responses, cached WAD headers, and revision lookup.
+
 ## Migrating from v3.x
 
 The rework branch changes enough that a v3.x setup can't be dropped in as-is:

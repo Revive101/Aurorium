@@ -1,5 +1,5 @@
 use crate::{
-    errors::AssetFetcherError, fetcher::fetcher::Fetcher, revision::Asset,
+    errors::AssetFetcherError, fetcher::asset_download, revision::Asset,
     wizard_patcher::WizardPatcher,
 };
 use futures_util::{StreamExt, stream};
@@ -11,7 +11,7 @@ use std::{
     sync::LazyLock,
     time::Duration,
 };
-use tracing::{debug, info, instrument, trace, warn};
+use tracing::{debug, info, instrument, warn};
 
 static MAIN_PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template(
@@ -47,7 +47,9 @@ impl<'a> AssetFetcher<'a> {
             .user_agent("KingsIsle Patcher")
             .pool_max_idle_per_host(concurrent_downloads.get())
             .tcp_keepalive(Duration::from_mins(1))
-            .timeout(Duration::from_mins(2))
+            .connect_timeout(Duration::from_secs(30))
+            // Large WADs may take minutes; only a stalled read should time out.
+            .read_timeout(Duration::from_secs(60))
             .build()
             .map_err(AssetFetcherError::ClientBuild)?;
 
@@ -81,72 +83,55 @@ impl<'a> AssetFetcher<'a> {
         main_progress.set_style(MAIN_PROGRESS_STYLE.clone());
         main_progress.enable_steady_tick(Duration::from_millis(200));
 
-        let downloads = self.assets.iter().map(|file| {
-            let client = self.client.clone();
-            let url_prefix = self.wizard_patcher.url_prefix.clone();
-            let save_dir = self.save_directory.clone();
-
-            let multi_progress = multi_progress.clone();
-            let main_progress = main_progress.clone();
-
+        // Fetch headers first: the client needs them even for already-cached WADs.
+        let headers = self
+            .assets
+            .iter()
+            .filter(|a| a.compressed_header_size > 0)
+            .map(|a| {
+                (
+                    format!("{}.hdr.gz", a.file_name),
+                    u64::from(a.compressed_header_size),
+                )
+            });
+        let assets = self
+            .assets
+            .iter()
+            .map(|a| (a.file_name.clone(), u64::from(a.size)));
+        let files: Vec<_> = headers.chain(assets).collect();
+        main_progress.set_length(files.len() as u64);
+        let downloads = files.into_iter().map(|(name, size)| {
+            let client = &self.client;
+            let url = format!("{}/{}", self.wizard_patcher.url_prefix, name);
+            let path = self.save_directory.join(&name);
+            let multi_progress = &multi_progress;
+            let main_progress = &main_progress;
             async move {
-                let url = format!("{url_prefix}/{}", file.file_name);
-                let save_path = save_dir.join(&file.file_name);
-
-                trace!(url = %url, file = %file.file_name, "starting download");
-
-                if save_path.exists() {
-                    trace!(file = %file.file_name, "already downloaded, skipping");
-                    main_progress.inc(1);
-                    return;
-                }
-
-                // Download the file and write it to disk
-                match client.get(&url).send().await {
-                    Ok(res) => {
-                        if !res.status().is_success() {
-                            warn!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
-                            main_progress.inc(1);
-                            return;
-                        }
-
-                        let file_progress = multi_progress.add(ProgressBar::new_spinner());
-                        let short_filename = file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
-                        file_progress.set_style(FILE_PROGRESS_STYLE.clone());
-                        file_progress.set_message(short_filename.to_string());
-                        file_progress.set_length(res.content_length().unwrap_or(file.size.into()));
-
-                        match Self::write_to_file_streamed(&save_path, res, Some(&file_progress)).await {
-                            Ok(()) => {
-                                file_progress.finish_with_message("Done");
-                            }
-                            Err(e) => {
-                                warn!(error = %e, file = %file.file_name, "failed to write file to disk");
-                            }
-                        }
-
-                        multi_progress.remove(&file_progress);
-                    },
-                    Err(e) => {
-                        // TODO: Handle retries (or log failures in a separate list)
-                        warn!(error = %e, file = %file.file_name, "failed to download file");
-                    }
-                }
-
+                let progress = multi_progress.add(ProgressBar::new(size));
+                progress.set_style(FILE_PROGRESS_STYLE.clone());
+                progress.set_message(name.clone());
+                let result = asset_download::download(client, &url, &path, size, &progress).await;
+                multi_progress.remove(&progress);
                 main_progress.inc(1);
+                if let Err(error) = &result {
+                    warn!(error = ?error, file = %name, "Asset incomplete; partial transfer retained for retry");
+                }
+                result
             }
         });
 
-        stream::iter(downloads)
+        let results = stream::iter(downloads)
             .buffer_unordered(self.concurrent_downloads.get())
-            .collect::<Vec<()>>()
+            .collect::<Vec<_>>()
             .await;
 
         multi_progress.clear().unwrap();
-        info!("All downloads completed");
+        let failed = results.iter().filter(|result| result.is_err()).count();
+        if failed > 0 {
+            miette::bail!("{failed} asset downloads failed; they will be retried on the next pass");
+        }
+        info!("All assets and WAD headers downloaded");
 
         Ok(())
     }
 }
-
-impl Fetcher for AssetFetcher<'_> {}
