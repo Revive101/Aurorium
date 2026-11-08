@@ -8,7 +8,10 @@ use reqwest::Client;
 use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
-    sync::LazyLock,
+    sync::{
+        LazyLock,
+        atomic::{AtomicUsize, Ordering},
+    },
     time::Duration,
 };
 use tracing::{debug, info, instrument, trace, warn};
@@ -61,13 +64,13 @@ impl<'a> AssetFetcher<'a> {
     }
 
     #[instrument(skip(self))]
-    pub async fn fetch_assets(&self) -> miette::Result<()> {
+    pub async fn fetch_assets(&self) -> miette::Result<usize> {
         if self.assets.is_empty() {
             info!(
                 "No assets to fetch for revision {}",
                 self.wizard_patcher.revision
             );
-            return Ok(());
+            return Ok(0);
         }
 
         debug!(
@@ -81,6 +84,8 @@ impl<'a> AssetFetcher<'a> {
         main_progress.set_style(MAIN_PROGRESS_STYLE.clone());
         main_progress.enable_steady_tick(Duration::from_millis(200));
 
+        let failed_count = AtomicUsize::new(0);
+
         let downloads = self.assets.iter().map(|file| {
             let client = self.client.clone();
             let url_prefix = self.wizard_patcher.url_prefix.clone();
@@ -88,6 +93,7 @@ impl<'a> AssetFetcher<'a> {
 
             let multi_progress = multi_progress.clone();
             let main_progress = main_progress.clone();
+            let failed_count = &failed_count;
 
             async move {
                 let url = format!("{url_prefix}/{}", file.file_name);
@@ -106,6 +112,7 @@ impl<'a> AssetFetcher<'a> {
                     Ok(res) => {
                         if !res.status().is_success() {
                             warn!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
+                            failed_count.fetch_add(1, Ordering::Relaxed);
                             main_progress.inc(1);
                             return;
                         }
@@ -121,6 +128,7 @@ impl<'a> AssetFetcher<'a> {
                                 file_progress.finish_with_message("Done");
                             }
                             Err(e) => {
+                                failed_count.fetch_add(1, Ordering::Relaxed);
                                 warn!(error = %e, file = %file.file_name, "failed to write file to disk");
                             }
                         }
@@ -129,6 +137,7 @@ impl<'a> AssetFetcher<'a> {
                     },
                     Err(e) => {
                         // TODO: Handle retries (or log failures in a separate list)
+                        failed_count.fetch_add(1, Ordering::Relaxed);
                         warn!(error = %e, file = %file.file_name, "failed to download file");
                     }
                 }
@@ -143,9 +152,10 @@ impl<'a> AssetFetcher<'a> {
             .await;
 
         let _ = multi_progress.clear();
-        info!("All downloads completed");
+        let failures = failed_count.load(Ordering::Relaxed);
+        info!("All downloads completed ({failures} failed)");
 
-        Ok(())
+        Ok(failures)
     }
 }
 

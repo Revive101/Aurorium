@@ -136,11 +136,21 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
         ..
     } = &config.fetcher;
 
+    let mut last_completed_revision: Option<String> = None;
+
     loop {
         info!("Checking for a new revision @ {host}:{port}");
 
         let result = async {
             let wizard_patcher = WizardPatcher::check_revision(host, port).await?;
+
+            if last_completed_revision.as_deref() == Some(wizard_patcher.revision.name.as_str()) {
+                info!(
+                    "Revision {} is already up to date, skipping manifest parse.",
+                    wizard_patcher.revision
+                );
+                return Ok::<(), miette::Report>(());
+            }
 
             let manifest_fetcher = ManifestFetcher::new(wizard_patcher.clone(), save_directory)?;
             manifest_fetcher.fetch_bin_manifest().await?;
@@ -161,6 +171,7 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
                         assets.len()
                     );
 
+                    let current_revision_name = wizard_patcher.revision.name.clone();
                     let asset_fetched = AssetFetcher::new(
                         wizard_patcher,
                         concurrent_downloads,
@@ -168,7 +179,10 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
                         assets,
                     )?;
 
-                    asset_fetched.fetch_assets().await?;
+                    let failures = asset_fetched.fetch_assets().await?;
+                    if failures == 0 {
+                        last_completed_revision = Some(current_revision_name);
+                    }
                 }
                 Err(e) => {
                     warn!(error = %e, "Failed to insert new revision into database");
