@@ -1,6 +1,6 @@
 use crate::{
-    errors::ManifestFetcherError, fetcher::fetcher::Fetcher, revision::Asset,
-    wizard_patcher::WizardPatcher, xml_parser::parse_file_list,
+    errors::ManifestFetcherError, fetcher::Fetcher, revision::Asset, wizard_patcher::WizardPatcher,
+    xml_parser::parse_file_list,
 };
 use reqwest::Client;
 use std::{

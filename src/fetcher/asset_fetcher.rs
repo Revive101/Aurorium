@@ -1,6 +1,5 @@
 use crate::{
-    errors::AssetFetcherError, fetcher::fetcher::Fetcher, revision::Asset,
-    wizard_patcher::WizardPatcher,
+    errors::AssetFetcherError, fetcher::Fetcher, revision::Asset, wizard_patcher::WizardPatcher,
 };
 use futures_util::{StreamExt, stream};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
