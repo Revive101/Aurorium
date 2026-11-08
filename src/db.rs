@@ -64,29 +64,7 @@ impl Database {
         Ok(Self { client })
     }
 
-    pub async fn get_latest_revision(&self) -> miette::Result<Option<Revision>> {
-        let revision = self
-            .client
-            .conn_and_then(|conn| -> Result<Option<Revision>, DbError> {
-                conn.query_row(
-                    "SELECT revision_name, number FROM revisions ORDER BY number DESC LIMIT 1",
-                    [],
-                    |row| {
-                        Ok(Revision {
-                            name: row.get(0)?,
-                            number: row.get(1)?,
-                        })
-                    },
-                )
-                .optional()
-                .map_err(Into::into)
-            })
-            .await?;
-
-        Ok(revision)
-    }
-
-    pub async fn list_revisions(&self) -> miette::Result<Vec<String>> {
+    pub async fn list_revisions(&self) -> Result<Vec<String>, DbError> {
         let revisions = self
             .client
             .conn_and_then(|conn| -> Result<Vec<String>, DbError> {
@@ -102,7 +80,7 @@ impl Database {
         Ok(revisions)
     }
 
-    pub async fn latest_revision(&self) -> miette::Result<Option<Revision>> {
+    pub async fn latest_revision(&self) -> Result<Option<Revision>, DbError> {
         let latest_revision = self
             .client
             .conn_and_then(|conn| -> Result<Option<Revision>, DbError> {
