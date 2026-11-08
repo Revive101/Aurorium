@@ -294,3 +294,23 @@ pub enum RouteError {
     )]
     InvalidWorkingDir(#[from] std::io::Error),
 }
+
+// main.rs (file_server)
+#[derive(Debug, Error, Diagnostic)]
+pub enum ServerError {
+    #[error("Failed to bind TCP listener on {1}")]
+    #[diagnostic(
+        code(server::bind_error),
+        help(
+            "Check if the configured address/port is valid and not already in use by another process."
+        )
+    )]
+    Bind(#[source] std::io::Error, std::net::SocketAddr),
+
+    #[error("HTTP server encountered a fatal error")]
+    #[diagnostic(
+        code(server::serve_error),
+        help("The HTTP server terminated unexpectedly due to an I/O error.")
+    )]
+    Serve(#[source] std::io::Error),
+}

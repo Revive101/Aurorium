@@ -1,6 +1,7 @@
 use crate::{
     config::{AppConfig, FetcherConfig, PatchConfig, ServerConfig},
     db::Database,
+    errors::ServerError,
     fetcher::{asset_fetcher::AssetFetcher, manifest_fetcher::ManifestFetcher},
     routes::{file::file, latest::get_latest_revision, revisions::get_revisions},
     wizard_patcher::WizardPatcher,
@@ -161,8 +162,7 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
                         concurrent_downloads,
                         save_directory,
                         assets,
-                    )
-                    .unwrap();
+                    )?;
 
                     asset_fetched.fetch_assets().await?;
                 }
@@ -195,15 +195,17 @@ async fn file_server(state: AppState) -> miette::Result<()> {
         .route("/{revision}/{*file_path}", get(file))
         .with_state(state.clone());
 
-    let listener = TcpListener::bind(&endpoint).await.unwrap();
-    info!("File server listening on {}", &endpoint);
+    let listener = TcpListener::bind(endpoint)
+        .await
+        .map_err(|e| ServerError::Bind(e, *endpoint))?;
+    info!("File server listening on {}", endpoint);
 
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
-    .unwrap();
+    .map_err(ServerError::Serve)?;
 
     Ok(())
 }
