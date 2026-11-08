@@ -159,6 +159,10 @@ pub enum ManifestFetcherError {
         )
     )]
     EmptyAssetList,
+
+    #[error("Background XML parsing task failed")]
+    #[diagnostic(code(asset_fetcher::task_join))]
+    TaskJoin(#[source] tokio::task::JoinError),
 }
 
 // fetcher.rs

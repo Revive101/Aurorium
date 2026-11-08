@@ -71,7 +71,9 @@ impl ManifestFetcher {
             info!(path = %path.display(), "XML manifest already cached, skipping download");
         }
 
-        let assets = parse_file_list(path)?;
+        let assets = tokio::task::spawn_blocking(move || parse_file_list(path))
+            .await
+            .map_err(ManifestFetcherError::TaskJoin)??;
         debug!("Parsed {} entries from LatestFileList.xml", assets.len());
 
         if assets.is_empty() {
