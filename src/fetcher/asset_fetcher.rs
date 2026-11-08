@@ -47,7 +47,7 @@ impl<'a> AssetFetcher<'a> {
             .user_agent("KingsIsle Patcher")
             .pool_max_idle_per_host(concurrent_downloads.get())
             .tcp_keepalive(Duration::from_mins(1))
-            .timeout(Duration::from_mins(2))
+            .read_timeout(Duration::from_mins(2))
             .build()
             .map_err(AssetFetcherError::ClientBuild)?;
 
