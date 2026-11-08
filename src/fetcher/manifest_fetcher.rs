@@ -54,7 +54,14 @@ impl ManifestFetcher {
     pub async fn fetch_xml_manifest(&self) -> miette::Result<Vec<Asset>> {
         let path = self.save_directory.join("LatestFileList.xml");
         let file_exists = try_exists(&path).await.map_err(ManifestFetcherError::Io)?;
-        let list_file_url = self.wizard_patcher.list_file_url.replace(".bin", ".xml");
+        let list_file_url = self
+            .wizard_patcher
+            .list_file_url
+            .strip_suffix(".bin")
+            .map_or_else(
+                || self.wizard_patcher.list_file_url.replace(".bin", ".xml"),
+                |prefix| format!("{prefix}.xml"),
+            );
 
         if !file_exists {
             info!("Fetching LatestFileList.xml...");
@@ -64,7 +71,7 @@ impl ManifestFetcher {
             info!(path = %path.display(), "XML manifest already cached, skipping download");
         }
 
-        let assets = parse_file_list(path).unwrap_or(vec![]);
+        let assets = parse_file_list(path)?;
         debug!("Parsed {} entries from LatestFileList.xml", assets.len());
 
         if assets.is_empty() {
