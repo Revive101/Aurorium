@@ -5,7 +5,7 @@ use crate::{
 use async_sqlite::{Client, ClientBuilder, JournalMode};
 use rusqlite::{Connection, OptionalExtension, params};
 use rusqlite_migration::{M, Migrations};
-use std::sync::LazyLock;
+use std::{path::Path, sync::LazyLock};
 use tracing::info;
 
 static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
@@ -102,11 +102,17 @@ impl Database {
         Ok(latest_revision)
     }
 
-    pub async fn insert_new_revision(
+    pub async fn insert_new_revision<P>(
         &self,
         revision: Revision,
         fetched_assets: Vec<Asset>,
-    ) -> miette::Result<Vec<Asset>> {
+        save_directory: P,
+    ) -> miette::Result<Vec<Asset>>
+    where
+        P: AsRef<Path>,
+    {
+        let save_dir = save_directory.as_ref().to_path_buf();
+
         let assets_to_download = self
         .client
         .conn_mut_and_then(move |conn: &mut Connection| -> Result<Vec<Asset>, DbError> {
@@ -120,8 +126,11 @@ impl Database {
             let mut stmt_check = tx.prepare(
                 "SELECT origin_revision FROM assets WHERE file_name = ?1 AND crc = ?2 AND size = ?3 LIMIT 1"
             )?;
+            let mut stmt_update_origin = tx.prepare(
+                "UPDATE assets SET origin_revision = ?1 WHERE file_name = ?2 AND crc = ?3 AND size = ?4"
+            )?;
             let mut stmt_insert = tx.prepare(
-                "INSERT OR IGNORE INTO assets (
+                "INSERT OR REPLACE INTO assets (
                     revision, file_name, tar_file_name, file_type, size, crc,
                     header_crc, header_size, compressed_header_size, origin_revision
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -136,10 +145,21 @@ impl Database {
 
                 let origin_revision = match existing_origin {
                     Some(origin) => {
-                        if origin == revision.name {
+                        let origin_path = save_dir.join(&origin).join(&asset.file_name);
+                        if origin_path.exists() {
+                            origin
+                        } else {
+                            if origin != revision.name {
+                                stmt_update_origin.execute(params![
+                                    revision.name,
+                                    asset.file_name,
+                                    asset.crc,
+                                    asset.size
+                                ])?;
+                            }
                             assets_to_download.push(asset.clone());
+                            revision.name.clone()
                         }
-                        origin
                     }
                     None => {
                         assets_to_download.push(asset.clone());
@@ -162,6 +182,7 @@ impl Database {
             }
 
             drop(stmt_check);
+            drop(stmt_update_origin);
             drop(stmt_insert);
             tx.commit().map_err(DbError::Transaction)?;
 

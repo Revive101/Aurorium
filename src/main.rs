@@ -147,7 +147,11 @@ async fn revision_checker(config: AppConfig, db: Database) -> miette::Result<()>
             let new_assets = manifest_fetcher.fetch_xml_manifest().await?;
 
             match db
-                .insert_new_revision(wizard_patcher.revision.clone(), new_assets)
+                .insert_new_revision(
+                    wizard_patcher.revision.clone(),
+                    new_assets,
+                    save_directory,
+                )
                 .await
             {
                 Ok(assets) => {
