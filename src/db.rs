@@ -30,9 +30,9 @@ static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
                 origin_revision TEXT NOT NULL REFERENCES revisions(revision_name),
 
                 PRIMARY KEY (revision, file_name)
-            );
+            ) WITHOUT ROWID;
 
-            CREATE INDEX idx_assets_lookup ON assets (file_name, crc, size);
+            CREATE INDEX idx_assets_lookup ON assets (file_name, crc, size, origin_revision);
         ",
     )])
 });
@@ -68,8 +68,8 @@ impl Database {
         let revisions = self
             .client
             .conn_and_then(|conn| -> Result<Vec<String>, DbError> {
-                let mut stmt =
-                    conn.prepare("SELECT revision_name FROM revisions ORDER BY number DESC")?;
+                let mut stmt = conn
+                    .prepare_cached("SELECT revision_name FROM revisions ORDER BY number DESC")?;
                 let names = stmt
                     .query_map([], |row| row.get(0))?
                     .collect::<Result<Vec<_>, _>>()?;
@@ -84,7 +84,7 @@ impl Database {
         let latest_revision = self
             .client
             .conn_and_then(|conn| -> Result<Option<Revision>, DbError> {
-                let mut stmt = conn.prepare(
+                let mut stmt = conn.prepare_cached(
                     "SELECT revision_name, number FROM revisions ORDER BY number DESC LIMIT 1",
                 )?;
                 let revision = stmt
@@ -120,16 +120,16 @@ impl Database {
 
             tx.execute(
                 "INSERT OR IGNORE INTO revisions (revision_name, number) VALUES (?1, ?2)",
-                params![revision.name, revision.number],
+                params![&revision.name, revision.number],
             )?;
 
-            let mut stmt_check = tx.prepare(
+            let mut stmt_check = tx.prepare_cached(
                 "SELECT origin_revision FROM assets WHERE file_name = ?1 AND crc = ?2 AND size = ?3 LIMIT 1"
             )?;
-            let mut stmt_update_origin = tx.prepare(
+            let mut stmt_update_origin = tx.prepare_cached(
                 "UPDATE assets SET origin_revision = ?1 WHERE file_name = ?2 AND crc = ?3 AND size = ?4"
             )?;
-            let mut stmt_insert = tx.prepare(
+            let mut stmt_insert = tx.prepare_cached(
                 "INSERT OR REPLACE INTO assets (
                     revision, file_name, tar_file_name, file_type, size, crc,
                     header_crc, header_size, compressed_header_size, origin_revision
@@ -140,45 +140,47 @@ impl Database {
 
             for asset in fetched_assets {
                 let existing_origin: Option<String> = stmt_check
-                    .query_row(params![asset.file_name, asset.crc, asset.size], |row| row.get(0))
+                    .query_row(params![&asset.file_name, asset.crc, asset.size], |row| row.get(0))
                     .optional()?;
 
-                let origin_revision = match existing_origin {
+                let (origin_revision, should_download) = match existing_origin {
                     Some(origin) => {
                         let origin_path = save_dir.join(&origin).join(&asset.file_name);
                         if origin_path.exists() {
-                            origin
+                            (Some(origin), false)
                         } else {
                             if origin != revision.name {
                                 stmt_update_origin.execute(params![
-                                    revision.name,
-                                    asset.file_name,
+                                    &revision.name,
+                                    &asset.file_name,
                                     asset.crc,
                                     asset.size
                                 ])?;
                             }
-                            assets_to_download.push(asset.clone());
-                            revision.name.clone()
+                            (None, true)
                         }
                     }
-                    None => {
-                        assets_to_download.push(asset.clone());
-                        revision.name.clone()
-                    }
+                    None => (None, true),
                 };
 
+                let origin_ref = origin_revision.as_deref().unwrap_or(&revision.name);
+
                 stmt_insert.execute(params![
-                    revision.name,
-                    asset.file_name,
-                    asset.tar_file_name,
+                    &revision.name,
+                    &asset.file_name,
+                    &asset.tar_file_name,
                     asset.file_type,
                     asset.size,
                     asset.crc,
                     asset.header_crc,
                     asset.header_size,
                     asset.compressed_header_size,
-                    origin_revision
+                    origin_ref
                 ])?;
+
+                if should_download {
+                    assets_to_download.push(asset);
+                }
             }
 
             drop(stmt_check);
@@ -201,7 +203,7 @@ impl Database {
         let result = self
             .client
             .conn_and_then(move |conn| -> Result<Option<String>, DbError> {
-                let mut stmt = conn.prepare(
+                let mut stmt = conn.prepare_cached(
                     "SELECT origin_revision FROM assets WHERE revision = ?1 AND file_name = ?2 LIMIT 1",
                 )?;
 
