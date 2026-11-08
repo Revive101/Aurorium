@@ -45,16 +45,18 @@ impl AppConfig {
     pub fn load() -> Result<Self, ConfigError> {
         let path: &Path = Path::new("config.toml");
 
-        if let Ok(content) = std::fs::read_to_string(path) {
-            return toml::from_str(&content).map_err(ConfigError::ParseError);
+        match std::fs::read_to_string(path) {
+            Ok(content) => toml::from_str(&content).map_err(ConfigError::ParseError),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                let default_config = AppConfig::default();
+                let toml_string = toml::to_string_pretty(&default_config)
+                    .map_err(ConfigError::SerializeError)?;
+                std::fs::write(path, &toml_string).map_err(ConfigError::PathError)?;
+
+                Ok(default_config)
+            }
+            Err(e) => Err(ConfigError::NotFound(e)),
         }
-
-        let default_config = AppConfig::default();
-        let toml_string =
-            toml::to_string_pretty(&default_config).map_err(ConfigError::SerializeError)?;
-        std::fs::write(path, &toml_string).map_err(ConfigError::PathError)?;
-
-        Ok(default_config)
     }
 }
 
