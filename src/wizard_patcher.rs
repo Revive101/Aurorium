@@ -1,10 +1,10 @@
-use crate::{
-    errors::WizardPatcherError,
-    revision::Revision,
-    utils::{Endianness, hex_decode},
-};
+use crate::{errors::WizardPatcherError, revision::Revision};
 use regex::Regex;
-use std::{io::Cursor, sync::LazyLock, time::Duration};
+use std::{
+    io::{Cursor, Read},
+    sync::LazyLock,
+    time::Duration,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -17,48 +17,53 @@ static REVISION_RE: LazyLock<Regex> =
 
 const FRAME_HEADER_LENGTH: usize = 4;
 const SESSION_OFFER_LENGTH: usize = 28;
-const SESSION_ACCEPT: &str =
-    "0DF02700000000000802220000000000000000000000000000000000000000000000000000000000000000"; // PatchMessages(8) -> MSG_LATEST_FILE_LIST_V2 (2)
+// PatchMessages(8) -> MSG_LATEST_FILE_LIST_V2 (2)
+const SESSION_ACCEPT: [u8; 43] = [
+    0x0D, 0xF0, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
 const TCP_TIMEOUT: Duration = Duration::from_secs(30);
 
 trait WizIntegration {
     const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
 
-    fn read_bytestring(&mut self) -> impl Future<Output = miette::Result<String>> + Send;
-    fn verify_food_header(&mut self) -> impl Future<Output = miette::Result<bool>> + Send;
-    fn read_le(&mut self, size: usize) -> impl Future<Output = miette::Result<Vec<u8>>> + Send;
+    fn read_bytestring(&mut self) -> miette::Result<String>;
+    fn verify_food_header(&mut self) -> miette::Result<bool>;
+    fn skip(&mut self, size: usize) -> miette::Result<()>;
 }
 
 impl WizIntegration for Cursor<&[u8]> {
     const FOOD_HEADER: [u8; 2] = [0x0D, 0xF0];
 
-    async fn read_bytestring(&mut self) -> miette::Result<String> {
-        let len = self
-            .read_u16_le()
-            .await
-            .map_err(WizardPatcherError::UnexpectedEofError)?;
-        let mut buffer = vec![0u8; len as usize];
-        tokio::io::AsyncReadExt::read_exact(self, &mut buffer)
-            .await
-            .map_err(WizardPatcherError::UnexpectedEofError)?;
-        Ok(String::from_utf8_lossy(&buffer).to_string())
+    fn read_bytestring(&mut self) -> miette::Result<String> {
+        let mut len_bytes = [0u8; 2];
+        Read::read_exact(self, &mut len_bytes).map_err(WizardPatcherError::UnexpectedEofError)?;
+        let len = u16::from_le_bytes(len_bytes) as usize;
+
+        let mut buffer = vec![0u8; len];
+        Read::read_exact(self, &mut buffer).map_err(WizardPatcherError::UnexpectedEofError)?;
+        Ok(String::from_utf8_lossy(&buffer).into_owned())
     }
 
-    async fn verify_food_header(&mut self) -> miette::Result<bool> {
-        let food_header = self
-            .read_u16_le()
-            .await
-            .map_err(WizardPatcherError::UnexpectedEofError)?;
+    fn verify_food_header(&mut self) -> miette::Result<bool> {
+        let mut food_header = [0u8; 2];
+        Read::read_exact(self, &mut food_header).map_err(WizardPatcherError::UnexpectedEofError)?;
 
-        Ok(food_header.to_le_bytes() == Self::FOOD_HEADER)
+        Ok(food_header == Self::FOOD_HEADER)
     }
 
-    async fn read_le(&mut self, size: usize) -> miette::Result<Vec<u8>> {
-        let mut buffer = vec![0u8; size];
-        tokio::io::AsyncReadExt::read_exact(self, &mut buffer)
-            .await
-            .map_err(WizardPatcherError::UnexpectedEofError)?;
-        Ok(buffer)
+    fn skip(&mut self, size: usize) -> miette::Result<()> {
+        let new_pos = self.position().saturating_add(size as u64);
+        if new_pos > self.get_ref().len() as u64 {
+            return Err(WizardPatcherError::UnexpectedEofError(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "cursor skip exceeded buffer length",
+            ))
+            .into());
+        }
+        self.set_position(new_pos);
+        Ok(())
     }
 }
 
@@ -100,9 +105,7 @@ impl WizardPatcher {
         }
 
         // Send our SESSION_ACCEPT packet to the server
-        let session_accept_bytes =
-            hex_decode(SESSION_ACCEPT, &Endianness::Little).expect("This should not fail!");
-        tokio::time::timeout(TCP_TIMEOUT, stream.write_all(&session_accept_bytes))
+        tokio::time::timeout(TCP_TIMEOUT, stream.write_all(&SESSION_ACCEPT))
             .await
             .map_err(|_| WizardPatcherError::TimeoutError)?
             .map_err(WizardPatcherError::WriteError)?;
@@ -134,22 +137,22 @@ impl WizardPatcher {
         })?;
 
         let _ = tokio::time::timeout(TCP_TIMEOUT, stream.shutdown()).await;
-        Self::parse_response(&response_buffer).await
+        Self::parse_response(&response_buffer)
     }
 
-    async fn parse_response(buffer: &[u8]) -> miette::Result<Self> {
+    fn parse_response(buffer: &[u8]) -> miette::Result<Self> {
         let mut cursor = Cursor::new(buffer);
 
-        if !cursor.verify_food_header().await? {
+        if !cursor.verify_food_header()? {
             return Err(miette::miette!("Invalid FOOD header in server response."));
         }
 
-        let _ = cursor.read_le(14).await?; // Skip irrelevant bytes
-        let _list_file_name = cursor.read_bytestring().await?;
-        let _ = cursor.read_le(16).await?; // Skip irrelevant bytes
+        cursor.skip(14)?; // Skip irrelevant bytes
+        let _list_file_name = cursor.read_bytestring()?;
+        cursor.skip(16)?; // Skip irrelevant bytes
 
-        let list_file_url = cursor.read_bytestring().await?;
-        let url_prefix = cursor.read_bytestring().await?;
+        let list_file_url = cursor.read_bytestring()?;
+        let url_prefix = cursor.read_bytestring()?;
 
         Ok(Self {
             revision: Self::capture_revision(&list_file_url)?,
