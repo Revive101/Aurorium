@@ -13,6 +13,7 @@ pub trait Fetcher {
             .get(url)
             .send()
             .await
+            .and_then(Response::error_for_status)
             .map_err(|e| FetcherTraitError::Fetch(e, url.to_string()))?)
     }
 
