@@ -142,7 +142,7 @@ impl<'a> AssetFetcher<'a> {
             .collect::<Vec<()>>()
             .await;
 
-        multi_progress.clear().unwrap();
+        let _ = multi_progress.clear();
         info!("All downloads completed");
 
         Ok(())
