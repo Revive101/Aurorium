@@ -39,16 +39,20 @@ pub trait Fetcher {
         let final_path = path.as_ref();
         let part_path = Self::part_path(final_path);
 
-        // Check if parent dir exists, else create it
-        if let Some(parent) = final_path.parent() {
-            create_dir_all(parent)
-                .await
-                .map_err(FetcherTraitError::CreateDir)?;
-        }
-
-        let file = tokio::fs::File::create(&part_path)
-            .await
-            .map_err(FetcherTraitError::Io)?;
+        let file = match tokio::fs::File::create(&part_path).await {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                if let Some(parent) = final_path.parent() {
+                    create_dir_all(parent)
+                        .await
+                        .map_err(FetcherTraitError::CreateDir)?;
+                }
+                tokio::fs::File::create(&part_path)
+                    .await
+                    .map_err(FetcherTraitError::Io)?
+            }
+            Err(e) => return Err(FetcherTraitError::Io(e).into()),
+        };
         let mut writer = BufWriter::with_capacity(128 * 1024, file); // TODO: Let the user configure this buffer size(?)
 
         // Stream response to file in chunks (to avoid loading the entire file into memory)

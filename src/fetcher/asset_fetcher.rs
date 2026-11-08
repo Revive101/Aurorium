@@ -14,6 +14,7 @@ use std::{
     },
     time::Duration,
 };
+use tokio::fs::try_exists;
 use tracing::{debug, info, instrument, trace, warn};
 
 static MAIN_PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
@@ -85,65 +86,63 @@ impl<'a> AssetFetcher<'a> {
         main_progress.enable_steady_tick(Duration::from_millis(200));
 
         let failed_count = AtomicUsize::new(0);
+        let client = &self.client;
+        let url_prefix = &self.wizard_patcher.url_prefix;
+        let save_dir = &self.save_directory;
+        let multi_progress_ref = &multi_progress;
+        let main_progress_ref = &main_progress;
+        let failed_count_ref = &failed_count;
 
-        let downloads = self.assets.iter().map(|file| {
-            let client = self.client.clone();
-            let url_prefix = self.wizard_patcher.url_prefix.clone();
-            let save_dir = self.save_directory.clone();
+        let downloads = self.assets.iter().map(|file| async move {
+            let url = format!("{url_prefix}/{}", file.file_name);
+            let save_path = save_dir.join(&file.file_name);
 
-            let multi_progress = multi_progress.clone();
-            let main_progress = main_progress.clone();
-            let failed_count = &failed_count;
+            trace!(url = %url, file = %file.file_name, "starting download");
 
-            async move {
-                let url = format!("{url_prefix}/{}", file.file_name);
-                let save_path = save_dir.join(&file.file_name);
-
-                trace!(url = %url, file = %file.file_name, "starting download");
-
-                if save_path.exists() {
-                    trace!(file = %file.file_name, "already downloaded, skipping");
-                    main_progress.inc(1);
-                    return;
-                }
-
-                // Download the file and write it to disk
-                match client.get(&url).send().await {
-                    Ok(res) => {
-                        if !res.status().is_success() {
-                            warn!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
-                            failed_count.fetch_add(1, Ordering::Relaxed);
-                            main_progress.inc(1);
-                            return;
-                        }
-
-                        let file_progress = multi_progress.add(ProgressBar::new_spinner());
-                        let short_filename = file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
-                        file_progress.set_style(FILE_PROGRESS_STYLE.clone());
-                        file_progress.set_message(short_filename.to_string());
-                        file_progress.set_length(res.content_length().unwrap_or(file.size.into()));
-
-                        match Self::write_to_file_streamed(&save_path, res, Some(&file_progress)).await {
-                            Ok(()) => {
-                                file_progress.finish_with_message("Done");
-                            }
-                            Err(e) => {
-                                failed_count.fetch_add(1, Ordering::Relaxed);
-                                warn!(error = %e, file = %file.file_name, "failed to write file to disk");
-                            }
-                        }
-
-                        multi_progress.remove(&file_progress);
-                    },
-                    Err(e) => {
-                        // TODO: Handle retries (or log failures in a separate list)
-                        failed_count.fetch_add(1, Ordering::Relaxed);
-                        warn!(error = %e, file = %file.file_name, "failed to download file");
-                    }
-                }
-
-                main_progress.inc(1);
+            if try_exists(&save_path).await.unwrap_or(false) {
+                trace!(file = %file.file_name, "already downloaded, skipping");
+                main_progress_ref.inc(1);
+                return;
             }
+
+            // Download the file and write it to disk
+            match client.get(&url).send().await {
+                Ok(res) => {
+                    if !res.status().is_success() {
+                        warn!(response=res.status().as_u16(), file = %file.file_name, "failed to download asset");
+                        failed_count_ref.fetch_add(1, Ordering::Relaxed);
+                        main_progress_ref.inc(1);
+                        return;
+                    }
+
+                    let file_progress = multi_progress_ref.add(ProgressBar::new_spinner());
+                    let short_filename =
+                        file.file_name.rsplit('/').next().unwrap_or(&file.file_name);
+                    file_progress.set_style(FILE_PROGRESS_STYLE.clone());
+                    file_progress.set_message(short_filename.to_string());
+                    file_progress.set_length(res.content_length().unwrap_or(file.size.into()));
+
+                    match Self::write_to_file_streamed(&save_path, res, Some(&file_progress)).await
+                    {
+                        Ok(()) => {
+                            file_progress.finish_with_message("Done");
+                        }
+                        Err(e) => {
+                            failed_count_ref.fetch_add(1, Ordering::Relaxed);
+                            warn!(error = %e, file = %file.file_name, "failed to write file to disk");
+                        }
+                    }
+
+                    multi_progress_ref.remove(&file_progress);
+                }
+                Err(e) => {
+                    // TODO: Handle retries (or log failures in a separate list)
+                    failed_count_ref.fetch_add(1, Ordering::Relaxed);
+                    warn!(error = %e, file = %file.file_name, "failed to download file");
+                }
+            }
+
+            main_progress_ref.inc(1);
         });
 
         stream::iter(downloads)
