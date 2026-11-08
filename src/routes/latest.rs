@@ -1,25 +1,14 @@
-use crate::{AppState, utils::ConnectionAddr};
-use axum::{
-    extract::State,
-    response::{AppendHeaders, IntoResponse},
-};
-use reqwest::header;
-use serde_json::json;
+use crate::{AppState, errors::RouteError, utils::ConnectionAddr};
+use axum::{Json, extract::State, response::IntoResponse};
 use tracing::debug;
 
 pub async fn get_latest_revision(
     State(state): State<AppState>,
     ConnectionAddr(addr): ConnectionAddr,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, RouteError> {
     debug!("GET /latest from {}", addr);
 
-    let latest_revision = state.db.latest_revision().await.unwrap();
-    let headers = AppendHeaders([(header::CONTENT_TYPE, "application/json; charset=utf-8")]);
+    let latest_revision = state.db.latest_revision().await?;
 
-    let content = match latest_revision {
-        Some(revision) => revision.name,
-        None => json!({}).to_string(),
-    };
-
-    (headers, content).into_response()
+    Ok(Json(latest_revision.map(|revision| revision.name)))
 }
