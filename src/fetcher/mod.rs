@@ -22,12 +22,12 @@ pub trait Fetcher {
 
     /// Streams an HTTP response to disk, optionally driving a progress bar.
     ///
-    /// # Panics
-    /// This function will panic if any of the following conditions are met:
-    /// - The file path is invalid.
-    /// - The response body cannot be read.
-    /// - The file cannot be created or written to.
-    /// - The file cannot be renamed to its final name after writing.
+    /// # Errors
+    /// Returns an error if any of the following conditions are met:
+    /// - Parent directories cannot be created.
+    /// - The temporary `.part` file cannot be created or written to.
+    /// - A chunk from the HTTP response body cannot be read.
+    /// - The `.part` file cannot be renamed to its final destination path.
     ///
     /// # TODO
     /// Implement resuming downloads by checking for a .part file and continuing from where it left off. (Their server supports range requests, so this should be possible.)
