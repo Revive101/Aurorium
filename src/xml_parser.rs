@@ -41,14 +41,17 @@ where
                     in_record = true;
                     current = Asset::default();
                 }
-                b"SrcFileName" => field = Some(Field::Src),
-                b"TarFileName" => field = Some(Field::Tar),
-                b"FileType" => field = Some(Field::FileType),
-                b"Size" => field = Some(Field::Size),
-                b"HeaderSize" => field = Some(Field::HeaderSize),
-                b"CompressedHeaderSize" => field = Some(Field::CompressedHeaderSize),
-                b"CRC" => field = Some(Field::Crc),
-                b"HeaderCRC" => field = Some(Field::HeaderCrc),
+                tag if in_record && depth_skipped == 0 => match tag {
+                    b"SrcFileName" => field = Some(Field::Src),
+                    b"TarFileName" => field = Some(Field::Tar),
+                    b"FileType" => field = Some(Field::FileType),
+                    b"Size" => field = Some(Field::Size),
+                    b"HeaderSize" => field = Some(Field::HeaderSize),
+                    b"CompressedHeaderSize" => field = Some(Field::CompressedHeaderSize),
+                    b"CRC" => field = Some(Field::Crc),
+                    b"HeaderCRC" => field = Some(Field::HeaderCrc),
+                    _ => {}
+                },
                 _ => {}
             },
 
@@ -67,14 +70,25 @@ where
                                 Some(text.into_owned())
                             }
                         }
-                        Field::FileType => current.file_type = text.parse().unwrap_or_default(),
-                        Field::Size => current.size = text.parse().unwrap_or_default(),
-                        Field::HeaderSize => current.header_size = text.parse().unwrap_or_default(),
-                        Field::CompressedHeaderSize => {
-                            current.compressed_header_size = text.parse().unwrap_or_default();
+                        Field::FileType => {
+                            current.file_type = text.parse().map_err(XmlParseError::Parse)?;
                         }
-                        Field::Crc => current.crc = text.parse().unwrap_or_default(),
-                        Field::HeaderCrc => current.header_crc = text.parse().unwrap_or_default(),
+                        Field::Size => {
+                            current.size = text.parse().map_err(XmlParseError::Parse)?;
+                        }
+                        Field::HeaderSize => {
+                            current.header_size = text.parse().map_err(XmlParseError::Parse)?;
+                        }
+                        Field::CompressedHeaderSize => {
+                            current.compressed_header_size =
+                                text.parse().map_err(XmlParseError::Parse)?;
+                        }
+                        Field::Crc => {
+                            current.crc = text.parse().map_err(XmlParseError::Parse)?;
+                        }
+                        Field::HeaderCrc => {
+                            current.header_crc = text.parse().map_err(XmlParseError::Parse)?;
+                        }
                     }
                 }
             }
