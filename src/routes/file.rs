@@ -65,7 +65,10 @@ pub async fn file(
             .ok_or_else(|| RouteError::NotFound(file_path.clone()))?
     };
 
-    let path = StdPath::new(&state.config.fetcher.save_directory)
+    let path = state
+        .config
+        .fetcher
+        .save_directory
         .join(revision_for_asset)
         .join(file_path);
 

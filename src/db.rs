@@ -43,7 +43,11 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn init(path: &str) -> miette::Result<Self> {
+    pub async fn init<P>(path: P) -> miette::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let path = path.as_ref();
         let client = ClientBuilder::new()
             .path(path)
             .journal_mode(JournalMode::Wal)
@@ -59,7 +63,7 @@ impl Database {
             })
             .await?;
 
-        info!("Database {} initialized!", path);
+        info!("Database {} initialized!", path.display());
 
         Ok(Self { client })
     }

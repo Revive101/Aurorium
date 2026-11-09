@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, num::NonZeroUsize, path::Path};
+use std::{
+    net::SocketAddr,
+    num::NonZeroUsize,
+    path::{Path, PathBuf},
+};
 
 use crate::errors::ConfigError;
 
@@ -11,7 +15,7 @@ pub struct ServerConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FetcherConfig {
     pub concurrent_downloads: NonZeroUsize,
-    pub save_directory: String,
+    pub save_directory: PathBuf,
     pub fetch_interval: u64,
 }
 
@@ -29,7 +33,7 @@ pub struct DebugConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DBConfig {
-    pub path: String,
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -73,10 +77,10 @@ impl Default for AppConfig {
             fetcher: FetcherConfig {
                 concurrent_downloads: unsafe { NonZeroUsize::new_unchecked(2) },
                 fetch_interval: 60 * 60 * 8,
-                save_directory: "data".to_string(),
+                save_directory: PathBuf::from("data"),
             },
             database: DBConfig {
-                path: "aurorium.db".to_string(),
+                path: PathBuf::from("aurorium.db"),
             },
             debug: None,
         }
